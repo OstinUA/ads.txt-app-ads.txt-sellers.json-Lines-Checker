@@ -1,6 +1,6 @@
 body {
   font-family: "Inter", Arial, sans-serif;
-  width: 400px;
+  width: 450px;
   margin: 0;
   padding: 0;
   background: #f8f9fa;
@@ -33,7 +33,7 @@ body {
 
 .filter-block {
   background: #fff;
-  padding: 10px;
+  padding: 5px;
   border-bottom: 1px solid #ddd;
 }
 
@@ -46,6 +46,7 @@ body {
   border: none;
   outline: none;
   overflow-y: auto;
+  font-size: 13px;
 }
 
 .output::-webkit-scrollbar {
@@ -69,4 +70,18 @@ body {
 .output b {
   font-weight: 700;
   color: #000;
+}
+
+.link-block {
+  margin-bottom: 6px;
+  font-size: 13px;
+}
+
+.link-block a {
+  color: #21aeb3;
+  text-decoration: none;
+}
+
+.link-block a:hover {
+  text-decoration: underline;
 }
