@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "ads.txt & app-ads.txt Viewer + Seller Checker",
-  "version": "1.4.1",
+  "version": "1.4.2",
   "description": "View and filter ads.txt / app-ads.txt files. Automatically matches adWMG sellers.",
   "icons": {
     "16": "icons/icon16.png",

@@ -12,7 +12,6 @@ let adsUrl = "";
 let appAdsUrl = "";
 let sellersData = [];
 let current = "ads";
-let matchedSellerIds = new Set();
 
 // --- Helper: get current domain ---
 async function getDomain() {
@@ -28,18 +27,16 @@ async function getDomain() {
   });
 }
 
-// --- Improved fetch with redirect handling ---
+// --- Fetch with redirect support ---
 async function fetchTxtFile(baseUrl, filename) {
   if (!baseUrl) return { text: `File ${filename} not found.`, finalUrl: "" };
   try {
     const url = `${baseUrl}/${filename}`;
     const res = await fetch(url, { redirect: "follow" });
 
-    // Handle redirect
     let finalUrl = url;
     if (res.redirected && res.url && res.url !== url) {
       finalUrl = res.url;
-      console.log(`Redirected to: ${res.url}`);
       const redirectedRes = await fetch(res.url, { redirect: "follow" });
       if (!redirectedRes.ok) throw new Error("redirect fetch failed");
       return { text: await redirectedRes.text(), finalUrl };
@@ -53,7 +50,7 @@ async function fetchTxtFile(baseUrl, filename) {
   }
 }
 
-// --- Fetch sellers.json from adWMG ---
+// --- Load sellers.json from adWMG ---
 async function fetchSellers() {
   try {
     const res = await fetch("https://adwmg.com/sellers.json");
@@ -65,7 +62,7 @@ async function fetchSellers() {
   }
 }
 
-// --- Load everything ---
+// --- Load ads.txt and app-ads.txt ---
 async function loadData() {
   const domain = await getDomain();
 
@@ -81,45 +78,53 @@ async function loadData() {
   showCurrent();
 }
 
-// --- Filter text and record seller IDs ---
-function filterText(text) {
-  matchedSellerIds.clear();
-  if (!filterCheckbox.checked) return highlightAdwmg(text);
-
-  const filtered = text
-    .split("\n")
-    .filter(line => /adwmg/i.test(line))
-    .map(line => {
-      const parts = line.split(",").map(p => p.trim());
-      if (parts.length >= 2 && /^\d+$/.test(parts[1])) {
-        matchedSellerIds.add(parts[1]);
-      }
-      return line;
-    });
-
-  const result = filtered.join("\n");
-  return result ? highlightAdwmg(result) : "No matches found.";
-}
-
 // --- Highlight adwmg text ---
 function highlightAdwmg(text) {
   return text.replace(/(adwmg)/gi, "<b>$1</b>");
 }
 
-// --- Match seller IDs ---
-function findSellerMatchesFromFiltered() {
-  if (matchedSellerIds.size === 0) return [];
+// --- Filter text for adwmg lines ---
+function filterText(text) {
+  if (!filterCheckbox.checked) return highlightAdwmg(text);
+  const filtered = text
+    .split("\n")
+    .filter(line => /adwmg/i.test(line))
+    .join("\n");
+  return filtered ? highlightAdwmg(filtered) : "No matches found.";
+}
+
+// --- Extract seller IDs from adwmg lines only ---
+function extractAdwmgSellerIds(text) {
+  const ids = new Set();
+  const lines = text.split("\n");
+  for (const line of lines) {
+    if (/adwmg/i.test(line)) {
+      const parts = line.split(",").map(p => p.trim());
+      if (parts.length >= 2 && /^\d+$/.test(parts[1])) {
+        ids.add(parts[1]);
+      }
+    }
+  }
+  return ids;
+}
+
+// --- Find matches in sellers.json based only on adwmg lines ---
+function findSellerMatchesForAdwmg() {
+  const idsFromAds = extractAdwmgSellerIds(adsText);
+  const idsFromAppAds = extractAdwmgSellerIds(appAdsText);
+  const combinedIds = new Set([...idsFromAds, ...idsFromAppAds]);
+
   const results = [];
-  for (const id of matchedSellerIds) {
-    const found = sellersData.filter(s => String(s.seller_id) === id);
-    for (const rec of found) {
+  for (const rec of sellersData) {
+    if (combinedIds.has(String(rec.seller_id))) {
       results.push({
         domain: rec.domain || "-",
-        seller_id: id,
+        seller_id: rec.seller_id || "-",
         seller_type: rec.seller_type || "-"
       });
     }
   }
+
   return results;
 }
 
@@ -131,16 +136,19 @@ function showCurrent() {
     filterBlock.style.display = "block";
     linkHtml = adsUrl ? `<a href="${adsUrl}" target="_blank">${adsUrl}</a>` : "";
     output.innerHTML = filterText(adsText);
+
   } else if (current === "appads") {
     filterBlock.style.display = "block";
     linkHtml = appAdsUrl ? `<a href="${appAdsUrl}" target="_blank">${appAdsUrl}</a>` : "";
     output.innerHTML = filterText(appAdsText);
+
   } else if (current === "seller") {
     filterBlock.style.display = "none";
-    const matches = findSellerMatchesFromFiltered();
     linkHtml = "";
+
+    const matches = findSellerMatchesForAdwmg();
     if (matches.length === 0) {
-      output.innerText = "No matches found.";
+      output.innerText = "No adwmg.com matches found.";
     } else {
       const lines = matches.map(m => `${m.domain} (${m.seller_id}) — ${m.seller_type}`);
       output.innerText = lines.join("\n");
@@ -150,7 +158,7 @@ function showCurrent() {
   linkBlock.innerHTML = linkHtml;
 }
 
-// --- Tab listeners ---
+// --- Tab handling ---
 adsTab.addEventListener("click", () => setActive("ads"));
 appAdsTab.addEventListener("click", () => setActive("appads"));
 sellerTab.addEventListener("click", () => setActive("seller"));
@@ -166,5 +174,5 @@ function setActive(tab) {
 }
 
 // --- Default state ---
-filterCheckbox.checked = true; // enabled by default
+filterCheckbox.checked = true;
 loadData();

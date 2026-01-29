@@ -46,6 +46,7 @@ body {
   border: none;
   outline: none;
   overflow-y: auto;
+  font-size: 12px
 }
 
 .output::-webkit-scrollbar {
