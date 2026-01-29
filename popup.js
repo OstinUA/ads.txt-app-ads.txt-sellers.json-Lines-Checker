@@ -4,16 +4,13 @@ const sellerTab = document.getElementById("seller-tab");
 const output = document.getElementById("output");
 const filterCheckbox = document.getElementById("filter-checkbox");
 const filterBlock = document.getElementById("filter-block");
-const linkBlock = document.getElementById("link-block");
 
 let adsText = "";
 let appAdsText = "";
-let adsUrl = "";
-let appAdsUrl = "";
 let sellersData = [];
 let current = "ads";
+let matchedSellerIds = new Set();
 
-// --- Helper: get current domain ---
 async function getDomain() {
   return new Promise((resolve) => {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
@@ -27,30 +24,17 @@ async function getDomain() {
   });
 }
 
-// --- Fetch with redirect support ---
 async function fetchTxtFile(baseUrl, filename) {
-  if (!baseUrl) return { text: `File ${filename} not found.`, finalUrl: "" };
+  if (!baseUrl) return `${filename} file not found.`;
   try {
-    const url = `${baseUrl}/${filename}`;
-    const res = await fetch(url, { redirect: "follow" });
-
-    let finalUrl = url;
-    if (res.redirected && res.url && res.url !== url) {
-      finalUrl = res.url;
-      const redirectedRes = await fetch(res.url, { redirect: "follow" });
-      if (!redirectedRes.ok) throw new Error("redirect fetch failed");
-      return { text: await redirectedRes.text(), finalUrl };
-    }
-
+    const res = await fetch(`${baseUrl}/${filename}`);
     if (!res.ok) throw new Error("not found");
-    return { text: await res.text(), finalUrl };
-  } catch (err) {
-    console.warn("Error fetching:", baseUrl, filename, err);
-    return { text: `File ${filename} not found.`, finalUrl: "" };
+    return await res.text();
+  } catch {
+    return `${filename} file not found.`;
   }
 }
 
-// --- Load sellers.json from adWMG ---
 async function fetchSellers() {
   try {
     const res = await fetch("https://adwmg.com/sellers.json");
@@ -62,103 +46,73 @@ async function fetchSellers() {
   }
 }
 
-// --- Load ads.txt and app-ads.txt ---
 async function loadData() {
   const domain = await getDomain();
-
-  const adsResult = await fetchTxtFile(domain, "ads.txt");
-  adsText = adsResult.text;
-  adsUrl = adsResult.finalUrl || `${domain}/ads.txt`;
-
-  const appResult = await fetchTxtFile(domain, "app-ads.txt");
-  appAdsText = appResult.text;
-  appAdsUrl = appResult.finalUrl || `${domain}/app-ads.txt`;
-
+  adsText = await fetchTxtFile(domain, "ads.txt");
+  appAdsText = await fetchTxtFile(domain, "app-ads.txt");
   await fetchSellers();
   showCurrent();
 }
 
-// --- Highlight adwmg text ---
-function highlightAdwmg(text) {
-  return text.replace(/(adwmg)/gi, "<b>$1</b>");
-}
-
-// --- Filter text for adwmg lines ---
 function filterText(text) {
+  matchedSellerIds.clear();
+
   if (!filterCheckbox.checked) return highlightAdwmg(text);
+
   const filtered = text
     .split("\n")
     .filter(line => /adwmg/i.test(line))
-    .join("\n");
-  return filtered ? highlightAdwmg(filtered) : "No matches found.";
-}
-
-// --- Extract seller IDs from adwmg lines only ---
-function extractAdwmgSellerIds(text) {
-  const ids = new Set();
-  const lines = text.split("\n");
-  for (const line of lines) {
-    if (/adwmg/i.test(line)) {
+    .map(line => {
       const parts = line.split(",").map(p => p.trim());
       if (parts.length >= 2 && /^\d+$/.test(parts[1])) {
-        ids.add(parts[1]);
+        matchedSellerIds.add(parts[1]);
       }
-    }
-  }
-  return ids;
+      return line;
+    });
+
+  return highlightAdwmg(filtered.join("\n") || "No matches found.");
 }
 
-// --- Find matches in sellers.json based only on adwmg lines ---
-function findSellerMatchesForAdwmg() {
-  const idsFromAds = extractAdwmgSellerIds(adsText);
-  const idsFromAppAds = extractAdwmgSellerIds(appAdsText);
-  const combinedIds = new Set([...idsFromAds, ...idsFromAppAds]);
+function highlightAdwmg(text) {
+  return text.replace(/(adwmg.com)/gi, "<b>$1</b>");
+}
+
+function findSellerMatchesFromFiltered() {
+  if (matchedSellerIds.size === 0) return [];
 
   const results = [];
-  for (const rec of sellersData) {
-    if (combinedIds.has(String(rec.seller_id))) {
+  for (const id of matchedSellerIds) {
+    const found = sellersData.filter(s => String(s.seller_id) === id);
+    for (const rec of found) {
       results.push({
         domain: rec.domain || "-",
-        seller_id: rec.seller_id || "-",
+        seller_id: id,
         seller_type: rec.seller_type || "-"
       });
     }
   }
-
   return results;
 }
 
-// --- Show current tab content ---
 function showCurrent() {
-  let linkHtml = "";
-
   if (current === "ads") {
     filterBlock.style.display = "block";
-    linkHtml = adsUrl ? `<a href="${adsUrl}" target="_blank">${adsUrl}</a>` : "";
     output.innerHTML = filterText(adsText);
-
   } else if (current === "appads") {
     filterBlock.style.display = "block";
-    linkHtml = appAdsUrl ? `<a href="${appAdsUrl}" target="_blank">${appAdsUrl}</a>` : "";
     output.innerHTML = filterText(appAdsText);
-
   } else if (current === "seller") {
     filterBlock.style.display = "none";
-    linkHtml = "";
-
-    const matches = findSellerMatchesForAdwmg();
+    const matches = findSellerMatchesFromFiltered();
     if (matches.length === 0) {
-      output.innerText = "No adwmg.com matches found.";
-    } else {
-      const lines = matches.map(m => `${m.domain} (${m.seller_id}) — ${m.seller_type}`);
-      output.innerText = lines.join("\n");
+      output.innerText = "No matches found.";
+      return;
     }
+    const lines = matches.map(m => `${m.domain} (${m.seller_id}) — ${m.seller_type}`);
+    output.innerText = lines.join("\n");
   }
-
-  linkBlock.innerHTML = linkHtml;
 }
 
-// --- Tab handling ---
 adsTab.addEventListener("click", () => setActive("ads"));
 appAdsTab.addEventListener("click", () => setActive("appads"));
 sellerTab.addEventListener("click", () => setActive("seller"));
@@ -173,6 +127,4 @@ function setActive(tab) {
   showCurrent();
 }
 
-// --- Default state ---
-filterCheckbox.checked = true;
 loadData();

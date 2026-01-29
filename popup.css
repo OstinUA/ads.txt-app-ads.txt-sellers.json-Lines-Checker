@@ -46,7 +46,6 @@ body {
   border: none;
   outline: none;
   overflow-y: auto;
-  font-size: 12px
 }
 
 .output::-webkit-scrollbar {
@@ -71,17 +70,3 @@ body {
   font-weight: 700;
   color: #000;
 }
-.link-block {
-  margin-bottom: 6px;
-  font-size: 13px;
-}
-
-.link-block a {
-  color: #21aeb3;
-  text-decoration: none;
-}
-
-.link-block a:hover {
-  text-decoration: underline;
-}
-
