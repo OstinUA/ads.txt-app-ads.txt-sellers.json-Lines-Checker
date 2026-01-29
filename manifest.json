@@ -1,12 +1,9 @@
 {
   "manifest_version": 3,
-  "name": "[adWMG] ads.txt & app-ads.txt Checker",
-  "version": "2.4.2",
-  "description": "View and filter ads.txt / app-ads.txt files. Automatically matches adWMG sellers.",
+  "name": "ads.txt & app-ads.txt Checker | Light",
+  "version": "2.9.1",
+  "description": "View and filter ads.txt / app-ads.txt files. Automatically matches adWMG sellers | adWMG / by Ostin",
   "icons": {
-    "16": "icons/icon16.png",
-    "32": "icons/icon32.png",
-    "48": "icons/icon48.png",
     "128": "icons/icon128.png"
   },
   "permissions": [
