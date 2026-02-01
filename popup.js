@@ -1,236 +1,42 @@
-// 📄 popup.js
 (() => {
-  const adsTab = document.getElementById("ads-tab");
-  const appAdsTab = document.getElementById("appads-tab");
-  const sellerTab = document.getElementById("seller-tab");
-  const output = document.getElementById("output");
-  const filterCheckbox = document.getElementById("filter-checkbox");
-  const filterBlock = document.getElementById("filter-block");
-  const linkBlock = document.getElementById("link-block");
-  // const openOptionsBtn = document.getElementById("openOptionsBtn"); // Удалена
+  const tabs = { appads: document.getElementById("appads-tab"), ads: document.getElementById("ads-tab") };
+  const output = document.getElementById("output"), filter = document.getElementById("filter-checkbox"), link = document.getElementById("link-block");
+  let data = { ads: { text: "0", url: "" }, appads: { text: "0", url: "" } }, sellers = [], current = "appads";
 
-  let adsText = "";
-  let appAdsText = "";
-  let adsUrl = "";
-  let appAdsUrl = "";
-  let sellersData = [];
-  let current = "seller";
-
-  function sendMessageSafe(message, callback = () => {}) {
-    chrome.runtime.sendMessage(message, (response) => {
-      if (chrome.runtime.lastError) {
-        // Игнорируем ошибки вроде "No SW"
-        return;
-      }
-      callback(response);
-    });
-  }
-
-  async function fetchWithTimeoutAndRetry(url, { timeout = 8000, retries = 1, fetchOptions = {} } = {}) {
-    for (let attempt = 0; attempt <= retries; attempt++) {
-      const controller = new AbortController();
-      const id = setTimeout(() => controller.abort(), timeout);
-      try {
-        const res = await fetch(url, { signal: controller.signal, ...fetchOptions });
-        clearTimeout(id);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return res;
-      } catch (err) {
-        clearTimeout(id);
-        if (attempt === retries) throw err;
-        await new Promise(r => setTimeout(r, 200 * (attempt + 1)));
-      }
-    }
-  }
-
-  function isHttpOrigin(base) {
-    return typeof base === "string" && /^https?:\/\//i.test(base);
-  }
-
-  function getActiveTabOrigin() {
-    return new Promise(resolve => {
-      try {
-        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-          try {
-            const tabUrl = tabs && tabs[0] && tabs[0].url ? tabs[0].url : "";
-            const url = new URL(tabUrl);
-            if (url.protocol !== "http:" && url.protocol !== "https:") {
-              resolve("");
-              return;
-            }
-            resolve(url.origin);
-          } catch {
-            resolve("");
-          }
-        });
-      } catch {
-        resolve("");
-      }
-    });
-  }
-
-  async function fetchTxtFile(base, name) {
-    if (!base || !isHttpOrigin(base)) return { text: `File ${name} not found.`, finalUrl: "" };
-    const url = `${base.replace(/\/$/, "")}/${name}`;
+  const loadFile = async (origin, name) => {
     try {
-      const res = await fetchWithTimeoutAndRetry(url, { timeout: 8000, retries: 1 });
-      const text = await res.text();
-      return { text, finalUrl: res.url || url };
-    } catch {
-      return { text: `File ${name} not found.`, finalUrl: "" };
-    }
-  }
+      const r = await fetch(`${origin.replace(/\/$/, "")}/${name}`);
+      return { text: r.ok ? await r.text() : "0", url: r.ok ? r.url : "" };
+    } catch { return { text: "0", url: "" }; }
+  };
 
-  function renderTextSafe(container, text, highlightRegex = /(adwmg\.com)/gi) {
-    container.innerHTML = ""; // clear
-    if (!text) return;
-    const lines = text.split("\n");
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i];
-      const lineNode = document.createElement("div");
-      let lastIndex = 0;
-      highlightRegex.lastIndex = 0;
-      let match;
-      while ((match = highlightRegex.exec(line)) !== null) {
-        const before = line.substring(lastIndex, match.index);
-        if (before) lineNode.appendChild(document.createTextNode(before));
-        const b = document.createElement("b");
-        b.textContent = match[0];
-        lineNode.appendChild(b);
-        lastIndex = highlightRegex.lastIndex;
-      }
-      const rest = line.substring(lastIndex);
-      if (rest) lineNode.appendChild(document.createTextNode(rest));
-      container.appendChild(lineNode);
-    }
-  }
-
-  function filterAndRender(text, container) {
-    if (!filterCheckbox.checked) {
-      renderTextSafe(container, text);
-      return;
-    }
-    const filtered = (text || "").split("\n").filter(l => /adwmg/i.test(l));
-    if (filtered.length === 0) {
-      container.textContent = "No matches found.";
+  const render = () => {
+    link.innerHTML = data[current].url ? `<a href="${data[current].url}" target="_blank">${data[current].url}</a>` : "";
+    let lines = data[current].text.split("\n");
+    if (filter.checked) lines = lines.filter(l => l.includes("adwmg.com"));
+    output.innerHTML = "";
+    if (lines.length === 0 || (lines.length === 1 && lines[0] === "0")) {
+      output.textContent = "0";
     } else {
-      renderTextSafe(container, filtered.join("\n"));
+      lines.forEach(l => {
+        const d = document.createElement("div");
+        d.innerHTML = l.replace(/(adwmg\.com)/gi, "<b>$1</b>");
+        output.appendChild(d);
+      });
     }
-  }
+  };
 
-  function extractAdwmgSellerIds(text) {
-    const set = new Set();
-    if (!text) return set;
-    for (const raw of text.split("\n")) {
-      if (!/adwmg/i.test(raw)) continue;
-      const parts = raw.split(",").map(p => p.trim());
-      if (parts.length < 2) continue;
-      const id = parts[1].replace(/\D/g, "");
-      if (id.length > 0) set.add(id);
-    }
-    return set;
-  }
-
-  function findSellerMatchesForAdwmg() {
-    const ids = new Set([
-      ...extractAdwmgSellerIds(adsText),
-      ...extractAdwmgSellerIds(appAdsText),
-    ]);
-    if (ids.size === 0) return [];
-    return sellersData
-      .filter(rec => ids.has(String(rec.seller_id)))
-      .map(rec => ({
-        domain: rec.domain || "-",
-        seller_id: rec.seller_id || "-",
-        seller_type: rec.seller_type || "-",
-      }));
-  }
-
-  function setLinkBlock(url) {
-    linkBlock.textContent = "";
-    if (!url) return;
-    try {
-      const a = document.createElement("a");
-      a.href = url;
-      a.target = "_blank";
-      a.rel = "noreferrer noopener";
-      a.textContent = url;
-      linkBlock.appendChild(a);
-    } catch {
-    }
-  }
-
-  function updateBadge(count) {
-    sendMessageSafe({ type: "setBadge", count });
-  }
-
-  function showCurrent() {
-    setLinkBlock("");
-
-    if (current === "ads") {
-      filterBlock.style.display = "block";
-      setLinkBlock(adsUrl);
-      filterAndRender(adsText, output);
-
-    } else if (current === "appads") {
-      filterBlock.style.display = "block";
-      setLinkBlock(appAdsUrl);
-      filterAndRender(appAdsText, output);
-
-    } else {
-      filterBlock.style.display = "none";
-      const matches = findSellerMatchesForAdwmg();
-      if (matches.length === 0) {
-        output.textContent = "No adwmg.com matches found.";
-      } else {
-        output.textContent = matches.map(m => `${m.domain} (${m.seller_id}) — ${m.seller_type}`).join("\n");
-      }
-      updateBadge(matches.length);
-    }
-  }
-
-  function setActive(tab) {
-    current = tab;
-    [adsTab, appAdsTab, sellerTab].forEach(b => b.classList.remove("active"));
-    if (tab === "ads") adsTab.classList.add("active");
-    if (tab === "appads") appAdsTab.classList.add("active");
-    if (tab === "seller") sellerTab.classList.add("active");
-    showCurrent();
-  }
-
-  adsTab.addEventListener("click", () => setActive("ads"));
-  appAdsTab.addEventListener("click", () => setActive("appads"));
-  sellerTab.addEventListener("click", () => setActive("seller"));
-  filterCheckbox.addEventListener("change", showCurrent);
-
-  // Логика кнопки настроек удалена
-
-  async function loadData() {
-    output.textContent = "Loading...";
-    const origin = await getActiveTabOrigin();
-
-    const [adsRes, appRes] = await Promise.all([
-      fetchTxtFile(origin, "ads.txt"),
-      fetchTxtFile(origin, "app-ads.txt")
-    ]);
-
-    adsText = adsRes.text;
-    adsUrl = adsRes.finalUrl || (origin ? `${origin}/ads.txt` : "");
-    appAdsText = appRes.text;
-    appAdsUrl = appRes.finalUrl || (origin ? `${origin}/app-ads.txt` : "");
-
-    sendMessageSafe({ type: "getSellersCache" }, (response) => {
-      try {
-        sellersData = Array.isArray(response && response.sellers) ? response.sellers : [];
-      } catch {
-        sellersData = [];
-      }
-      showCurrent();
+  const init = async () => {
+    chrome.tabs.query({ active: true, currentWindow: true }, async (t) => {
+      const origin = new URL(t[0].url).origin;
+      const res = await Promise.all([loadFile(origin, "app-ads.txt"), loadFile(origin, "ads.txt")]);
+      data.appads = res[0]; data.ads = res[1];
+      chrome.runtime.sendMessage({ type: "getSellersCache" }, r => { sellers = r?.sellers || []; render(); });
     });
+  };
 
-    sendMessageSafe({ type: "refreshSellers" });
-  }
-
-  filterCheckbox.checked = true;
-  loadData();
+  tabs.appads.onclick = () => { current = "appads"; tabs.appads.className = "tab active"; tabs.ads.className = "tab"; render(); };
+  tabs.ads.onclick = () => { current = "ads"; tabs.ads.className = "tab active"; tabs.appads.className = "tab"; render(); };
+  filter.onchange = render;
+  init();
 })();
