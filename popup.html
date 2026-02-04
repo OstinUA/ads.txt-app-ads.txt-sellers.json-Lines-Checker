@@ -27,14 +27,21 @@
   <div id="settings-panel" class="settings-panel" style="display: none;">
     <input type="text" id="sellers-url-input" placeholder="https://adwmg.com/sellers.json" />
     <button id="save-settings">Save</button>
+    <button id="force-refresh-cache" title="Force sync: fetch fresh ads.txt/app-ads.txt and update sellers.json by bypassing cache"">Cache</button>
   </div>
 
   <div id="filter-area" class="filter-area">
-    <div id="link-block" class="link-block"></div>
-    <div id="filter-status-text" class="filter-status-text">Show only adWMG</div>
+    <div id="filter-left-section" class="filter-left-section">
+      <div id="link-block" class="link-block"></div>
+      <div id="filter-status-text" class="filter-status-text">Show only adWMG</div>
+    </div>
+    <div id="status-container" class="status-container">
+      <div id="file-date" class="status-date"></div>
+      <div id="owner-badge" class="badge"></div>
+    </div>
   </div>
 
-  <pre id="output" class="output">Loading...</pre>
+  <div id="output" class="output">Loading...</div>
 
   <div class="footer">
     <a href="https://adwmg.com" target="_blank" class="footer-link">

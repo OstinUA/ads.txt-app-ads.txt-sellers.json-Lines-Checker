@@ -5,13 +5,13 @@ const CUSTOM_URL_KEY = "custom_sellers_url";
 
 const BADGE_BG_COLOR = "#21aeb3";
 const SCAN_COOLDOWN_MS = 60 * 1000;
-const FETCH_TIMEOUT_MS = 8000;
-const FETCH_RETRIES = 1;
-const FIXED_CACHE_TTL_MS = 12 * 60 * 60 * 1000;
+const FETCH_TIMEOUT_MS = 10000;
+const FETCH_RETRIES = 3;
+const FIXED_CACHE_TTL_MS = 1 * 60 * 60 * 1000;
 
 const INITIAL_DELAY_MS = 5000;
 const RETRY_INTERVAL_MS = 5000;
-const MAX_RETRIES = 2;
+const MAX_RETRIES = 3;
 
 const countsByTab = Object.create(null);
 const lastScanAt = Object.create(null);

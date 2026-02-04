@@ -3,7 +3,9 @@
   const appAdsTab = document.getElementById("appads-tab");
   const sellerTab = document.getElementById("seller-tab");
   const output = document.getElementById("output");
+  
   const filterArea = document.getElementById("filter-area");
+  const filterLeftSection = document.getElementById("filter-left-section");
   const linkBlock = document.getElementById("link-block");
   const filterStatusText = document.getElementById("filter-status-text");
   
@@ -11,19 +13,24 @@
   const settingsPanel = document.getElementById("settings-panel");
   const urlInput = document.getElementById("sellers-url-input");
   const saveBtn = document.getElementById("save-settings");
+  const refreshCacheBtn = document.getElementById("force-refresh-cache");
 
   const adsCountEl = document.getElementById("ads-line-count");
   const appAdsCountEl = document.getElementById("appads-line-count");
   const sellerCountEl = document.getElementById("seller-line-count");
 
-  let adsText = "";
-  let appAdsText = "";
-  let adsUrl = "";
-  let appAdsUrl = "";
+  const statusContainer = document.getElementById("status-container");
+  const fileDateEl = document.getElementById("file-date");
+  const ownerBadgeEl = document.getElementById("owner-badge");
+
+  let adsData = { text: "", url: "", date: null };
+  let appAdsData = { text: "", url: "", date: null };
+  
   let sellersData = [];
   let current = "seller";
   let isFilterActive = true;
   let currentSellersUrl = "https://adwmg.com/sellers.json";
+  let currentTabDomain = "";
 
   function sendMessageSafe(message, callback = () => {}) {
     chrome.runtime.sendMessage(message, (response) => {
@@ -35,8 +42,7 @@
   function getBrandName(url) {
     try {
       const hostname = new URL(url).hostname;
-      const parts = hostname.replace("www.", "").split(".");
-      return parts[0] || "adWMG";
+      return hostname.replace("www.", "").split(".")[0] || "adWMG";
     } catch {
       return "adWMG";
     }
@@ -53,12 +59,14 @@
     return count > 0 ? count : "0";
   }
 
-  async function fetchWithTimeoutAndRetry(url, { timeout = 8000, retries = 1 } = {}) {
+  // Обновленный fetch с поддержкой форсированного обновления через кэш
+  async function fetchWithTimeoutAndRetry(url, { timeout = 8000, retries = 1, force = false } = {}) {
+    const fetchOptions = force ? { cache: "reload" } : {}; // Игнорируем кэш браузера при force: true
     for (let attempt = 0; attempt <= retries; attempt++) {
       const controller = new AbortController();
       const id = setTimeout(() => controller.abort(), timeout);
       try {
-        const res = await fetch(url, { signal: controller.signal });
+        const res = await fetch(url, { signal: controller.signal, ...fetchOptions });
         clearTimeout(id);
         return res;
       } catch (err) {
@@ -69,17 +77,42 @@
     }
   }
 
-  async function fetchTxtFile(base, name) {
-    if (!base) return { text: `File ${name} not found (Invalid Origin).`, isError: true };
+  async function fetchTxtFile(base, name, force = false) {
+    if (!base) return { text: `File ${name} not found.`, isError: true };
     const url = `${base.replace(/\/$/, "")}/${name}`;
     try {
-      const res = await fetchWithTimeoutAndRetry(url);
+      const res = await fetchWithTimeoutAndRetry(url, { force });
       if (!res.ok) return { text: `File ${name} not found (Error: ${res.status}).`, isError: true };
+      
       const text = await res.text();
-      return { text, finalUrl: res.url || url, isError: false };
+      const lastModified = res.headers.get("Last-Modified");
+      
+      return { text, finalUrl: res.url || url, lastModified: lastModified, isError: false };
     } catch {
       return { text: `File ${name} not found (Network Error).`, isError: true };
     }
+  }
+
+  function checkOwnerDomain(text) {
+    if (!text) return "MISSING";
+    const lines = text.split(/\r?\n/);
+    let foundDomain = null;
+    for (const rawLine of lines) {
+      const line = rawLine.split("#")[0].trim();
+      if (line.toUpperCase().startsWith("OWNERDOMAIN")) {
+        let valuePart = line.substring(11).trim().replace(/^[,=:]/, "").trim();
+        if (valuePart) { foundDomain = valuePart.split(/\s+/)[0]; break; }
+      }
+    }
+    if (!foundDomain) return "MISSING";
+    const ownerDomain = foundDomain.toLowerCase().replace(/^www\./, "");
+    const siteDomain = currentTabDomain.toLowerCase().replace(/^www\./, "");
+    return (siteDomain === ownerDomain || siteDomain.endsWith("." + ownerDomain)) ? "MATCH" : "MISMATCH";
+  }
+
+  function isIdInSellers(sellerId) {
+    if (!sellersData || sellersData.length === 0) return true;
+    return sellersData.some(s => String(s.seller_id) === String(sellerId));
   }
 
   function renderTextSafe(container, text) {
@@ -87,161 +120,194 @@
     if (!text) return;
     const brand = getBrandName(currentSellersUrl).toLowerCase();
     const highlightRegex = new RegExp(`(${brand})`, "gi");
-    
-    const lines = text.split("\n");
-    lines.forEach(line => {
+    text.split("\n").forEach(line => {
+      const trimmedLine = line.trim();
+      if (trimmedLine.length === 0) return;
       const lineNode = document.createElement("div");
-      let lastIndex = 0;
-      let match;
+      lineNode.className = "line-row";
+      let warningTitle = "";
+      let isError = false;
+      let isMismatch = false;
+
+      if (trimmedLine.toLowerCase().includes(brand)) {
+        if (/^[^a-zA-Z0-9]/.test(trimmedLine)) {
+          isError = true;
+          warningTitle = "Error: Line is commented out or invalid!";
+          lineNode.classList.add("line-critical-error"); 
+        }
+        const parts = trimmedLine.split(",").map(p => p.trim());
+        if (parts.length >= 2) {
+          const cleanId = parts[1].split(/\s+/)[0].replace(/[^a-zA-Z0-9]/g, ""); 
+          if (cleanId && !isIdInSellers(cleanId)) {
+            isMismatch = true;
+            if (!isError) {
+              lineNode.classList.add("line-warning");
+              warningTitle = "Warning: ID not found in sellers.json";
+            }
+          }
+        }
+      }
+
+      let lastIndex = 0; let match;
       while ((match = highlightRegex.exec(line)) !== null) {
         lineNode.appendChild(document.createTextNode(line.substring(lastIndex, match.index)));
-        const b = document.createElement("b");
-        b.textContent = match[0];
+        const b = document.createElement("b"); b.textContent = match[0];
         lineNode.appendChild(b);
         lastIndex = highlightRegex.lastIndex;
       }
       lineNode.appendChild(document.createTextNode(line.substring(lastIndex)));
+
+      if (isError || isMismatch) {
+        const warnSpan = document.createElement("span");
+        warnSpan.className = "warning-icon";
+        warnSpan.textContent = isError ? "(X)" : "(!)";
+        warnSpan.title = warningTitle;
+        lineNode.appendChild(warnSpan);
+      }
       container.appendChild(lineNode);
     });
   }
 
   function filterAndRender(text, container) {
     const brand = getBrandName(currentSellersUrl).toLowerCase();
-    if (!isFilterActive) {
-      renderTextSafe(container, text);
-      return;
-    }
+    if (!isFilterActive) { renderTextSafe(container, text); return; }
     const filtered = (text || "").split("\n").filter(l => l.toLowerCase().includes(brand));
-    if (filtered.length === 0) {
-      container.textContent = `No ${brand} matches found.`;
-    } else {
-      renderTextSafe(container, filtered.join("\n"));
-    }
-  }
-
-  function extractAdwmgSellerIds(text) {
-    const set = new Set();
-    if (!text) return set;
-    const brand = getBrandName(currentSellersUrl).toLowerCase();
-    text.split("\n").forEach(raw => {
-      if (raw.toLowerCase().includes(brand)) {
-        const parts = raw.split(",").map(p => p.trim());
-        if (parts.length >= 2) {
-          const id = parts[1].replace(/\D/g, "");
-          if (id) set.add(id);
-        }
-      }
-    });
-    return set;
+    if (filtered.length === 0) { container.textContent = `No ${brand} matches.`; } 
+    else { renderTextSafe(container, filtered.join("\n")); }
   }
 
   function findSellerMatches() {
-    const ids = new Set([...extractAdwmgSellerIds(adsText), ...extractAdwmgSellerIds(appAdsText)]);
+    const brand = getBrandName(currentSellersUrl).toLowerCase();
+    const extractIds = (t) => {
+      const set = new Set();
+      (t || "").split("\n").forEach(l => {
+        if (l.toLowerCase().includes(brand)) {
+          const p = l.split(",").map(x => x.trim());
+          if (p.length >= 2) { const id = p[1].replace(/[^a-zA-Z0-9]/g, ""); if (id) set.add(id); }
+        }
+      });
+      return set;
+    };
+    const ids = new Set([...extractIds(adsData.text), ...extractIds(appAdsData.text)]);
     return sellersData.filter(rec => ids.has(String(rec.seller_id)));
+  }
+
+  function updateStatusInfo(type) {
+    if (type === "seller") { statusContainer.style.display = "none"; return; }
+    statusContainer.style.display = "flex";
+    const data = type === "ads" ? adsData : appAdsData;
+    if (data.date) {
+      const d = new Date(data.date);
+      fileDateEl.textContent = `Modified: ${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}.${d.getFullYear()}`;
+    } else { fileDateEl.textContent = ""; }
+    const status = checkOwnerDomain(data.text);
+    ownerBadgeEl.className = "badge " + (status === "MATCH" ? "success" : status === "MISMATCH" ? "error" : "neutral");
+    ownerBadgeEl.textContent = "OWNER: " + (status === "MATCH" ? "OK" : status);
   }
 
   function showCurrent() {
     linkBlock.textContent = "";
     const brand = getBrandName(currentSellersUrl);
     if (current === "seller") {
+      statusContainer.style.display = "none"; 
       filterArea.style.display = "none";
       const matches = findSellerMatches();
-      sellerCountEl.textContent = matches.length > 0 ? matches.length : "0";
+      sellerCountEl.textContent = matches.length || "0";
+      output.innerHTML = "";
+
       if (matches.length === 0) {
-        output.textContent = `No ${brand} matches found.`;
+        output.textContent = `No ${brand} matches.`;
       } else {
-        output.textContent = matches.map(m => `${m.domain} (${m.seller_id}) — ${m.seller_type}`).join("\n");
+
+        const currentDomainClean = currentTabDomain.toLowerCase().replace(/^www\./, "");
+
+        matches.forEach(m => {
+          const d = document.createElement("div");
+          d.className = "line-row";
+
+          const sellerDomainClean = (m.domain || "").toLowerCase().replace(/^www\./, "");
+          if (sellerDomainClean === currentDomainClean && currentDomainClean !== "") {
+            d.classList.add("highlight-own-domain");
+            d.title = "This entry matches the current website domain";
+          }
+
+          d.textContent = `${m.domain} (${m.seller_id}) — ${m.seller_type}`;
+          output.appendChild(d);
+        });
       }
     } else {
-      filterArea.style.display = "block";
-      const text = current === "ads" ? adsText : appAdsText;
-      const url = current === "ads" ? adsUrl : appAdsUrl;
-      
-      if (url) {
-        const a = document.createElement("a");
-        a.href = url; a.target = "_blank"; a.textContent = url;
-        linkBlock.appendChild(a);
+      updateStatusInfo(current); 
+      filterArea.style.display = "flex";
+      const data = current === "ads" ? adsData : appAdsData;
+      if (data.url) { 
+        const a = document.createElement("a"); 
+        a.href = data.url; 
+        a.target = "_blank"; 
+        a.textContent = data.url; 
+        linkBlock.appendChild(a); 
       }
-      filterAndRender(text, output);
+      filterAndRender(data.text, output);
     }
-    
-    const matches = findSellerMatches();
-    sendMessageSafe({ type: "setBadge", count: matches.length });
+    sendMessageSafe({ type: "setBadge", count: findSellerMatches().length });
   }
 
-  function setActive(tab) {
-    current = tab;
-    [adsTab, appAdsTab, sellerTab].forEach(b => b.classList.remove("active"));
-    document.getElementById(`${tab}-tab`).classList.add("active");
-    showCurrent();
-  }
+  function setActive(tab) { current = tab; [adsTab, appAdsTab, sellerTab].forEach(b => b.classList.toggle("active", b.id === `${tab}-tab`)); showCurrent(); }
 
-  // Настройки
-  settingsToggle.addEventListener("click", () => {
-    settingsPanel.style.display = settingsPanel.style.display === "none" ? "flex" : "none";
-  });
+  settingsToggle.addEventListener("click", () => { settingsPanel.style.display = settingsPanel.style.display === "none" ? "flex" : "none"; });
 
   saveBtn.addEventListener("click", () => {
     const newUrl = urlInput.value.trim();
     if (newUrl) {
       chrome.storage.local.set({ custom_sellers_url: newUrl }, () => {
-        currentSellersUrl = newUrl;
-        updateFilterText();
-        settingsPanel.style.display = "none";
-        sendMessageSafe({ type: "refreshSellers" }, (resp) => {
-           loadData();
-        });
+        currentSellersUrl = newUrl; updateFilterText();
+        sendMessageSafe({ type: "refreshSellers" }, () => loadData(true));
       });
     }
+  });
+
+  refreshCacheBtn.addEventListener("click", () => {
+    refreshCacheBtn.textContent = "Cache"; refreshCacheBtn.disabled = true;
+    sendMessageSafe({ type: "refreshSellers" }, () => {
+      loadData(true).then(() => {
+        refreshCacheBtn.textContent = "Sync";
+        setTimeout(() => { refreshCacheBtn.textContent = "Cache"; refreshCacheBtn.disabled = false; }, 1000);
+      });
+    });
   });
 
   adsTab.addEventListener("click", () => setActive("ads"));
   appAdsTab.addEventListener("click", () => setActive("appads"));
   sellerTab.addEventListener("click", () => setActive("seller"));
+  filterLeftSection.addEventListener("click", () => { isFilterActive = !isFilterActive; filterArea.classList.toggle("active", isFilterActive); showCurrent(); });
 
-  filterArea.addEventListener("click", () => {
-    isFilterActive = !isFilterActive;
-    filterArea.classList.toggle("active", isFilterActive);
-    showCurrent();
-  });
+  async function loadData(force = false) {
+    output.textContent = "Refreshing data...";
+    return new Promise((resolve) => {
+      chrome.storage.local.get(["custom_sellers_url"], (res) => {
+        if (res.custom_sellers_url) { currentSellersUrl = res.custom_sellers_url; urlInput.value = currentSellersUrl; }
+        updateFilterText();
+        chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
+          let origin = ""; try { const u = new URL(tabs[0].url); if (u.protocol.startsWith("http")) { origin = u.origin; currentTabDomain = u.hostname; } } catch {}
+          
+          const [adsRes, appRes] = await Promise.all([
+            fetchTxtFile(origin, "ads.txt", force),
+            fetchTxtFile(origin, "app-ads.txt", force)
+          ]);
 
-  async function loadData() {
-    output.textContent = "Loading...";
-    chrome.storage.local.get(["custom_sellers_url"], (res) => {
-      if (res.custom_sellers_url) {
-        currentSellersUrl = res.custom_sellers_url;
-        urlInput.value = currentSellersUrl;
-      }
-      updateFilterText();
+          adsData = { text: adsRes.text, url: adsRes.finalUrl || (origin ? `${origin}/ads.txt` : ""), date: adsRes.lastModified };
+          appAdsData = { text: appRes.text, url: appRes.finalUrl || (origin ? `${origin}/app-ads.txt` : ""), date: appRes.lastModified };
+          adsCountEl.textContent = countLines(adsData.text, adsRes.isError);
+          appAdsCountEl.textContent = countLines(appAdsData.text, appRes.isError);
 
-      chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
-        let origin = "";
-        try {
-          const url = new URL(tabs[0].url);
-          if (url.protocol.startsWith("http")) origin = url.origin;
-        } catch {}
-
-        const [adsRes, appRes] = await Promise.all([
-          fetchTxtFile(origin, "ads.txt"),
-          fetchTxtFile(origin, "app-ads.txt")
-        ]);
-
-        adsText = adsRes.text;
-        adsUrl = adsRes.finalUrl || (origin ? `${origin}/ads.txt` : "");
-        appAdsText = appRes.text;
-        appAdsUrl = appRes.finalUrl || (origin ? `${origin}/app-ads.txt` : "");
-
-        adsCountEl.textContent = countLines(adsText, adsRes.isError);
-        appAdsCountEl.textContent = countLines(appAdsText, appRes.isError);
-
-        sendMessageSafe({ type: "getSellersCache" }, (response) => {
-          sellersData = (response && response.sellers) || [];
-          showCurrent();
+          sendMessageSafe({ type: "getSellersCache" }, (resp) => {
+            sellersData = (resp && resp.sellers) || [];
+            showCurrent(); resolve();
+          });
         });
       });
     });
   }
 
+  loadData(false);
   if (isFilterActive) filterArea.classList.add("active");
-  loadData();
 })();
