@@ -59,9 +59,8 @@
     return count > 0 ? count : "0";
   }
 
-  // Обновленный fetch с поддержкой форсированного обновления через кэш
   async function fetchWithTimeoutAndRetry(url, { timeout = 8000, retries = 1, force = false } = {}) {
-    const fetchOptions = force ? { cache: "reload" } : {}; // Игнорируем кэш браузера при force: true
+    const fetchOptions = force ? { cache: "reload" } : {};
     for (let attempt = 0; attempt <= retries; attempt++) {
       const controller = new AbortController();
       const id = setTimeout(() => controller.abort(), timeout);
@@ -83,31 +82,42 @@
     try {
       const res = await fetchWithTimeoutAndRetry(url, { force });
       if (!res.ok) return { text: `File ${name} not found (Error: ${res.status}).`, isError: true };
-      
       const text = await res.text();
       const lastModified = res.headers.get("Last-Modified");
-      
       return { text, finalUrl: res.url || url, lastModified: lastModified, isError: false };
     } catch {
       return { text: `File ${name} not found (Network Error).`, isError: true };
     }
   }
 
+  function cleanDomain(input) {
+    if (!input) return "";
+    let d = input.toLowerCase().trim();
+    d = d.replace(/^https?:\/\//, "");
+    d = d.replace(/^www\./, "");
+    d = d.replace(/\.+/g, "."); 
+    d = d.split(/[/?#\s,;=:]/)[0];
+    return d;
+  }
+
   function checkOwnerDomain(text) {
-    if (!text) return "MISSING";
+    if (!text) return { status: "NOT FOUND", value: null };
     const lines = text.split(/\r?\n/);
-    let foundDomain = null;
+    let foundRawValue = null;
     for (const rawLine of lines) {
-      const line = rawLine.split("#")[0].trim();
+      const line = rawLine.trim();
       if (line.toUpperCase().startsWith("OWNERDOMAIN")) {
-        let valuePart = line.substring(11).trim().replace(/^[,=:]/, "").trim();
-        if (valuePart) { foundDomain = valuePart.split(/\s+/)[0]; break; }
+        let val = line.substring(11).trim().replace(/^[,=:]/, "").trim();
+        if (val) { foundRawValue = val.split(/\s+/)[0]; break; }
       }
     }
-    if (!foundDomain) return "MISSING";
-    const ownerDomain = foundDomain.toLowerCase().replace(/^www\./, "");
-    const siteDomain = currentTabDomain.toLowerCase().replace(/^www\./, "");
-    return (siteDomain === ownerDomain || siteDomain.endsWith("." + ownerDomain)) ? "MATCH" : "MISMATCH";
+    if (!foundRawValue) return { status: "NOT FOUND", value: null };
+    const ownerClean = cleanDomain(foundRawValue);
+    const siteClean = cleanDomain(currentTabDomain);
+    if (ownerClean === siteClean || siteClean.endsWith("." + ownerClean)) {
+      return { status: "MATCH", value: foundRawValue };
+    }
+    return { status: "MISMATCH", value: foundRawValue };
   }
 
   function isIdInSellers(sellerId) {
@@ -120,9 +130,11 @@
     if (!text) return;
     const brand = getBrandName(currentSellersUrl).toLowerCase();
     const highlightRegex = new RegExp(`(${brand})`, "gi");
+
     text.split("\n").forEach(line => {
       const trimmedLine = line.trim();
       if (trimmedLine.length === 0) return;
+
       const lineNode = document.createElement("div");
       lineNode.className = "line-row";
       let warningTitle = "";
@@ -130,17 +142,21 @@
       let isMismatch = false;
 
       if (trimmedLine.toLowerCase().includes(brand)) {
-        if (/^[^a-zA-Z0-9]/.test(trimmedLine)) {
+        const hasComma = trimmedLine.includes(",");
+        const startsWithSpecial = /^[^a-zA-Z0-9]/.test(trimmedLine);
+
+        if (startsWithSpecial && hasComma) {
           isError = true;
-          warningTitle = "Error: Line is commented out or invalid!";
+          warningTitle = "Error: Data line is commented out!";
           lineNode.classList.add("line-critical-error"); 
         }
+
         const parts = trimmedLine.split(",").map(p => p.trim());
         if (parts.length >= 2) {
           const cleanId = parts[1].split(/\s+/)[0].replace(/[^a-zA-Z0-9]/g, ""); 
           if (cleanId && !isIdInSellers(cleanId)) {
             isMismatch = true;
-            if (!isError) {
+            if (!isError && !startsWithSpecial) {
               lineNode.classList.add("line-warning");
               warningTitle = "Warning: ID not found in sellers.json";
             }
@@ -157,7 +173,7 @@
       }
       lineNode.appendChild(document.createTextNode(line.substring(lastIndex)));
 
-      if (isError || isMismatch) {
+      if (isError || (isMismatch && !/^[^a-zA-Z0-9]/.test(trimmedLine))) {
         const warnSpan = document.createElement("span");
         warnSpan.className = "warning-icon";
         warnSpan.textContent = isError ? "(X)" : "(!)";
@@ -181,7 +197,8 @@
     const extractIds = (t) => {
       const set = new Set();
       (t || "").split("\n").forEach(l => {
-        if (l.toLowerCase().includes(brand)) {
+        const trimmed = l.trim();
+        if (trimmed.toLowerCase().includes(brand) && !/^[^a-zA-Z0-9]/.test(trimmed)) {
           const p = l.split(",").map(x => x.trim());
           if (p.length >= 2) { const id = p[1].replace(/[^a-zA-Z0-9]/g, ""); if (id) set.add(id); }
         }
@@ -200,9 +217,29 @@
       const d = new Date(data.date);
       fileDateEl.textContent = `Modified: ${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}.${d.getFullYear()}`;
     } else { fileDateEl.textContent = ""; }
-    const status = checkOwnerDomain(data.text);
-    ownerBadgeEl.className = "badge " + (status === "MATCH" ? "success" : status === "MISMATCH" ? "error" : "neutral");
-    ownerBadgeEl.textContent = "OWNER: " + (status === "MATCH" ? "OK" : status);
+    
+    const ownerResult = checkOwnerDomain(data.text);
+    ownerBadgeEl.innerHTML = "";
+    
+    if (ownerResult.status === "NOT FOUND") {
+      ownerBadgeEl.className = "badge neutral";
+      ownerBadgeEl.textContent = "OWNER: NOT FOUND";
+    } else if (ownerResult.status === "MATCH") {
+      ownerBadgeEl.className = "badge success";
+      ownerBadgeEl.textContent = "OWNER: MATCH";
+    } else {
+      ownerBadgeEl.className = "badge error";
+      ownerBadgeEl.textContent = "OWNER: ";
+      const link = document.createElement("a");
+      let href = ownerResult.value;
+      if (!href.startsWith("http")) href = "http://" + href;
+      link.href = href;
+      link.target = "_blank";
+      link.textContent = ownerResult.value;
+      link.style.color = "inherit";
+      link.style.textDecoration = "underline";
+      ownerBadgeEl.appendChild(link);
+    }
   }
 
   function showCurrent() {
@@ -214,23 +251,17 @@
       const matches = findSellerMatches();
       sellerCountEl.textContent = matches.length || "0";
       output.innerHTML = "";
-
       if (matches.length === 0) {
         output.textContent = `No ${brand} matches.`;
       } else {
-
-        const currentDomainClean = currentTabDomain.toLowerCase().replace(/^www\./, "");
-
+        const currentDomainClean = cleanDomain(currentTabDomain);
         matches.forEach(m => {
           const d = document.createElement("div");
           d.className = "line-row";
-
-          const sellerDomainClean = (m.domain || "").toLowerCase().replace(/^www\./, "");
+          const sellerDomainClean = cleanDomain(m.domain);
           if (sellerDomainClean === currentDomainClean && currentDomainClean !== "") {
             d.classList.add("highlight-own-domain");
-            d.title = "This entry matches the current website domain";
           }
-
           d.textContent = `${m.domain} (${m.seller_id}) — ${m.seller_type}`;
           output.appendChild(d);
         });
@@ -266,11 +297,10 @@
   });
 
   refreshCacheBtn.addEventListener("click", () => {
-    refreshCacheBtn.textContent = "Cache"; refreshCacheBtn.disabled = true;
+    refreshCacheBtn.textContent = "..."; refreshCacheBtn.disabled = true;
     sendMessageSafe({ type: "refreshSellers" }, () => {
       loadData(true).then(() => {
-        refreshCacheBtn.textContent = "Sync";
-        setTimeout(() => { refreshCacheBtn.textContent = "Cache"; refreshCacheBtn.disabled = false; }, 1000);
+        refreshCacheBtn.textContent = "Cache"; refreshCacheBtn.disabled = false;
       });
     });
   });
@@ -281,24 +311,21 @@
   filterLeftSection.addEventListener("click", () => { isFilterActive = !isFilterActive; filterArea.classList.toggle("active", isFilterActive); showCurrent(); });
 
   async function loadData(force = false) {
-    output.textContent = "Refreshing data...";
+    output.textContent = "Loading...";
     return new Promise((resolve) => {
       chrome.storage.local.get(["custom_sellers_url"], (res) => {
         if (res.custom_sellers_url) { currentSellersUrl = res.custom_sellers_url; urlInput.value = currentSellersUrl; }
         updateFilterText();
         chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
           let origin = ""; try { const u = new URL(tabs[0].url); if (u.protocol.startsWith("http")) { origin = u.origin; currentTabDomain = u.hostname; } } catch {}
-          
           const [adsRes, appRes] = await Promise.all([
             fetchTxtFile(origin, "ads.txt", force),
             fetchTxtFile(origin, "app-ads.txt", force)
           ]);
-
           adsData = { text: adsRes.text, url: adsRes.finalUrl || (origin ? `${origin}/ads.txt` : ""), date: adsRes.lastModified };
           appAdsData = { text: appRes.text, url: appRes.finalUrl || (origin ? `${origin}/app-ads.txt` : ""), date: appRes.lastModified };
           adsCountEl.textContent = countLines(adsData.text, adsRes.isError);
           appAdsCountEl.textContent = countLines(appAdsData.text, appRes.isError);
-
           sendMessageSafe({ type: "getSellersCache" }, (resp) => {
             sellersData = (resp && resp.sellers) || [];
             showCurrent(); resolve();
