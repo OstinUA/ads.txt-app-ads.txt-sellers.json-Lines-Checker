@@ -32,12 +32,17 @@
   let currentSellersUrl = "https://adwmg.com/sellers.json";
   let currentTabDomain = "";
 
-  function sendMessageSafe(message, callback = () => {}) {
-    chrome.runtime.sendMessage(message, (response) => {
-      if (chrome.runtime.lastError) return;
-      callback(response);
-    });
-  }
+function sendMessageSafe(message, callback = () => {}) {
+  if (!chrome.runtime || !chrome.runtime.id) return;
+
+  chrome.runtime.sendMessage(message, (response) => {
+    if (chrome.runtime.lastError) {
+      console.warn("Service Worker is not ready yet:", chrome.runtime.lastError.message);
+      return;
+    }
+    if (callback) callback(response);
+  });
+}
 
   function getBrandName(url) {
     try {
