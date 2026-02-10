@@ -1,57 +1,90 @@
-# 🛡️ Ads.txt & Sellers.json Validator (Chrome Extension)
+# Ads.txt, App-ads.txt & Sellers.json Lines Checker
 
-A comprehensive AdOps utility tool built for Chrome (Manifest V3). It automates the validation of `ads.txt` and `app-ads.txt` files, cross-references inventory against a `sellers.json` registry, and highlights syntax errors or configuration mismatches in real-time.
-
-![Version](https://img.shields.io/badge/version-5.2.2-blue)
+![Version](https://img.shields.io/badge/version-5.5.2-blue)
 ![Manifest](https://img.shields.io/badge/manifest-V3-green)
-![Category](https://img.shields.io/badge/category-AdOps-orange)
+![Context](https://img.shields.io/badge/context-AdOps-orange)
+
+A powerful Chrome Extension (Manifest V3) designed for AdOps professionals and Publishers. It automatically validates `ads.txt` and `app-ads.txt` files on any domain, cross-referencing them against a `sellers.json` registry (defaulting to adWMG) to ensure inventory authorization and syntax accuracy.
 
 ## Key Features
 
-### 1. File Validation & Parsing
-* **Dual-File Check:** Automatically fetches and parses both `ads.txt` and `app-ads.txt` for the current domain.
-* **Syntax Highlighting:** Detects and flags critical syntax errors (e.g., lines starting with invalid characters) that would cause crawlers to ignore the record.
-* **Owner Domain Validation:** Checks the `OWNERDOMAIN` field against the actual site domain to ensure authorization (Returns: `OK`, `MISMATCH`, or `MISSING`).
+### 1. Automated Validation
+* **Dual-File Scanning:** Simultaneously fetches `ads.txt` and `app-ads.txt` for the current tab's domain.
+* **Soft 404 Detection:** Intelligently identifies if a server returns an HTML page (error page) instead of a valid text file, preventing false positives.
+* **Owner Domain Validation:** Parses the `OWNERDOMAIN` field and compares it against the site's actual hostname.
+    * `MATCH`: Domain is authorized.
+    * `MISMATCH`: Domain does not match.
+    * `NOT FOUND`: Field is missing.
 
-### 2. Sellers.json Cross-Reference
-* **Inventory Matching:** Automatically fetches `sellers.json` (defaults to `adwmg.com`, configurable) and caches it.
-* **Discrepancy Detection:** Highlights `ads.txt` entries where the Seller ID is **missing** from the associated `sellers.json` file (Logic Warning).
-* **Brand Filtering:** One-click filter to show only lines related to a specific SSP/Brand.
+### 2. Sellers.json Cross-Referencing
+* **Registry Matching:** Downloads and caches the `sellers.json` database.
+* **ID Verification:** Checks every Seller ID in the `ads.txt` file against the downloaded registry.
+* **Gap Analysis:** Highlights lines where the Seller ID exists in the text file but is missing from `sellers.json`.
 
-### 3. UI & UX
-* **Smart Badge:** Displays the count of valid matched lines directly on the extension icon.
-* **Tabbed Interface:** Separate views for `sellers.json` matches, `ads.txt`, and `app-ads.txt`.
-* **Last Modified Date:** Displays when the file was last updated on the server.
-* **Configurable Settings:** Users can set a custom `sellers.json` URL via the settings panel.
+### 3. Syntax & Error Highlighting
+The extension parses the file line-by-line and applies visual cues:
+* **[Red] Critical Error:** Lines commented out or starting with invalid characters (ignored by crawlers).
+* **[Orange] Warning:** Valid syntax, but the Seller ID is not found in the `sellers.json` registry.
+* **[Green] Success:** Valid line with a confirmed match in `sellers.json`.
+* **Own Domain Highlighting:** Visually distinguishes lines pointing to the current domain.
 
-## Technical Stack
+### 4. Smart Caching & Settings
+* **Custom Registry:** Users can configure a custom `sellers.json` URL via the settings panel (Default: `https://adwmg.com/sellers.json`).
+* **Performance:** Implements a 1-hour TTL cache for the `sellers.json` file to minimize network requests.
+* **Force Refresh:** Button available to bypass the cache and fetch fresh data immediately.
 
-* **JavaScript (ES6+):** Pure Vanilla JS, no external frameworks.
-* **Chrome APIs:**
-    * `chrome.scripting`: For injecting analysis scripts into the active tab.
-    * `chrome.storage.local`: For caching the `sellers.json` file to reduce network requests.
-    * `chrome.action`: For updating the dynamic badge counter.
-* **CSS3:** Custom responsive layout with Flexbox and dark/light mode compatibility elements.
+---
 
-## Installation (Developer Mode)
+## Installation
 
-1.  Clone or download this repository.
-2.  Open Chrome and navigate to `chrome://extensions`.
-3.  Enable **Developer mode** (toggle in the top right corner).
+### From Source (Developer Mode)
+1.  Clone this repository:
+    ```bash
+    git clone [https://github.com/OstinUA/ads.txt-app-ads.txt-sellers.json-Lines-Checker.git](https://github.com/OstinUA/ads.txt-app-ads.txt-sellers.json-Lines-Checker.git)
+    ```
+2.  Open Chrome and navigate to `chrome://extensions/`.
+3.  Toggle **Developer mode** in the top right corner.
 4.  Click **Load unpacked**.
-5.  Select the folder containing `manifest.json`.
+5.  Select the directory where you cloned this repository.
 
-## Usage
+---
 
-1.  Navigate to any website (e.g., `nytimes.com`).
-2.  The extension icon will update with a number indicating valid lines found for the configured SSP.
-3.  Click the icon to open the popup:
-    * **Tab 1 (sellers.json):** Shows matched records from the SSP's registry.
-    * **Tab 2 (ads.txt):** Shows the site's ads.txt content with syntax highlighting.
-        * **Red (X):** Critical Syntax Error.
-        * **Pink (!):** ID Mismatch (ID exists in text but not in sellers.json).
-    * **Tab 3 (app-ads.txt):** Same analysis for mobile app inventory.
-4.  **Settings:** Click the `⠸` icon to change the target `sellers.json` URL (Default: `https://adwmg.com/sellers.json`).
+## Configuration
+
+By default, the extension checks against the **adWMG** registry. To change this:
+
+1.  Open the extension popup.
+2.  Click the **Settings** icon in the header.
+3.  Enter your target URL in the input field (e.g., `https://example.com/sellers.json`).
+4.  Click **Save**.
+
+The extension will immediately refresh the cache and re-scan the current tab against the new registry.
+
+---
+
+## Technical Architecture
+
+* **Manifest V3:** Uses Service Workers (`background.js`) instead of persistent background pages for better performance and battery life.
+* **Scripting API:** Injects lightweight content scripts to safely fetch local file data without CORS issues.
+* **Storage API:** Persists user settings and the `sellers.json` cache using `chrome.storage.local`.
+* **Retry Logic:** `background.js` implements a robust fetch mechanism with exponential backoff and timeouts to handle unstable network conditions.
+
+### File Structure
+* `background.js`: Handles caching, badge updates, and periodic scanning.
+* `popup.js`: Manages the UI logic, parsing, validation, and rendering of the results.
+* `content_script.js`: Retrieves the raw text content from the active tab.
+
+---
+
+## Troubleshooting
+
+**"File appears to be an HTML page"**
+The extension detected that the server returned an HTML document (like a 404 page or a redirect) instead of a plain text file. This is a common misconfiguration on publisher sites.
+
+**Badge count is 0**
+This means no lines in the `ads.txt` file matched the filter domain (e.g., "adwmg") defined in your settings. Open the popup to see if the file is empty or missing.
+
+---
 
 ## Validation Logic Details
 
