@@ -2,7 +2,7 @@
 
 A comprehensive AdOps utility tool built for Chrome (Manifest V3). It automates the validation of `ads.txt` and `app-ads.txt` files, cross-references inventory against a `sellers.json` registry, and highlights syntax errors or configuration mismatches in real-time.
 
-![Version](https://img.shields.io/badge/version-6.1.0-3e5f8a)
+![Version](https://img.shields.io/badge/version-6.1.1-3e5f8a)
 ![Platform](https://img.shields.io/badge/platform-Chrome_Extension-4285F4?logo=google-chrome&logoColor=white)
 ![Manifest](https://img.shields.io/badge/manifest-V3-2ea44f)
 ![Category](https://img.shields.io/badge/category-AdOps-orange)
