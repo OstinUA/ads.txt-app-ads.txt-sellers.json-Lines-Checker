@@ -2,7 +2,7 @@
 
 A comprehensive AdOps utility tool built for Chrome (Manifest V3). It automates the validation of `ads.txt` and `app-ads.txt` files, cross-references inventory against a `sellers.json` registry, and highlights syntax errors or configuration mismatches in real-time.
 
-![Version](https://img.shields.io/badge/version-6.0.0-21aeb3)
+![Version](https://img.shields.io/badge/version-6.2.0-21aeb3)
 ![Platform](https://img.shields.io/badge/platform-Chrome_Extension-4285F4?logo=google-chrome&logoColor=white)
 ![Manifest](https://img.shields.io/badge/manifest-V3-2ea44f)
 ![Category](https://img.shields.io/badge/category-AdOps-orange)
@@ -78,9 +78,9 @@ if (line.includes(brand)) {
 
 ## Project Structure
 
-├── background.js      # Service worker: handles caching, badges, and timers
-├── content_script.js  # Injects into page to fetch local files
-├── manifest.json      # Extension configuration (V3)
-├── popup.html         # Main UI structure
-├── popup.css          # Styling (Tabs, Warnings, Badges)
-└── popup.js           # Core UI logic, parsing, and rendering
+├── manifest.json      # Extension configuration (Manifest V3)
+├── background.js      # Service Worker: Handles fetching, caching (sellers.json), and badge updates
+├── popup.html         # Main Extension UI: Tabs layout and container
+├── popup.css          # Styling: Dark/Light theming, badges, and scrollbars
+├── popup.js           # Core Logic: Parses text files, runs validation, and renders results
+└── utils.js           # Shared Utilities: URL cleaning and Brand Name extraction logic
