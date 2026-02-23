@@ -22,6 +22,7 @@
   const statusContainer = document.getElementById("status-container");
   const fileDateEl = document.getElementById("file-date");
   const ownerBadgeEl = document.getElementById("owner-badge");
+  const managerBadgeEl = document.getElementById("manager-badge");
 
   let adsData = { text: "", url: "", date: null };
   let appAdsData = { text: "", url: "", date: null };
@@ -97,24 +98,47 @@
     }
   }
 
-  function checkOwnerDomain(text) {
+  function checkDomainField(text, fieldName) {
     if (!text) return { status: "NOT FOUND", value: null };
     const lines = text.split(/\r?\n/);
     let foundRawValue = null;
     for (const rawLine of lines) {
       const line = rawLine.trim();
-      if (line.toUpperCase().startsWith("OWNERDOMAIN")) {
-        let val = line.substring(11).trim().replace(/^[,=:]/, "").trim();
+      if (line.toUpperCase().startsWith(fieldName)) {
+        let val = line.substring(fieldName.length).trim().replace(/^[,=:]/, "").trim();
         if (val) { foundRawValue = val.split(/\s+/)[0]; break; }
       }
     }
     if (!foundRawValue) return { status: "NOT FOUND", value: null };
-    const ownerClean = cleanDomain(foundRawValue);
+    const valClean = cleanDomain(foundRawValue);
     const siteClean = cleanDomain(currentTabDomain);
-    if (ownerClean === siteClean || siteClean.endsWith("." + ownerClean)) {
+    if (valClean === siteClean || siteClean.endsWith("." + valClean)) {
       return { status: "MATCH", value: foundRawValue };
     }
     return { status: "MISMATCH", value: foundRawValue };
+  }
+
+  function renderBadge(element, label, result) {
+    element.innerHTML = "";
+    if (result.status === "NOT FOUND") {
+      element.className = "badge neutral";
+      element.textContent = `${label}: NOT FOUND`;
+    } else if (result.status === "MATCH") {
+      element.className = "badge success";
+      element.textContent = `${label}: MATCH`;
+    } else {
+      element.className = "badge error";
+      element.textContent = `${label}: `;
+      const link = document.createElement("a");
+      let href = result.value;
+      if (!href.startsWith("http")) href = "http://" + href;
+      link.href = href;
+      link.target = "_blank";
+      link.textContent = result.value;
+      link.style.color = "inherit";
+      link.style.textDecoration = "underline";
+      element.appendChild(link);
+    }
   }
 
   function isIdInSellers(sellerId) {
@@ -215,28 +239,11 @@
       fileDateEl.textContent = `Modified: ${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}.${d.getFullYear()}`;
     } else { fileDateEl.textContent = ""; }
     
-    const ownerResult = checkOwnerDomain(data.text);
-    ownerBadgeEl.innerHTML = "";
-    
-    if (ownerResult.status === "NOT FOUND") {
-      ownerBadgeEl.className = "badge neutral";
-      ownerBadgeEl.textContent = "OWNER: NOT FOUND";
-    } else if (ownerResult.status === "MATCH") {
-      ownerBadgeEl.className = "badge success";
-      ownerBadgeEl.textContent = "OWNER: MATCH";
-    } else {
-      ownerBadgeEl.className = "badge error";
-      ownerBadgeEl.textContent = "OWNER: ";
-      const link = document.createElement("a");
-      let href = ownerResult.value;
-      if (!href.startsWith("http")) href = "http://" + href;
-      link.href = href;
-      link.target = "_blank";
-      link.textContent = ownerResult.value;
-      link.style.color = "inherit";
-      link.style.textDecoration = "underline";
-      ownerBadgeEl.appendChild(link);
-    }
+    const ownerRes = checkDomainField(data.text, "OWNERDOMAIN");
+    renderBadge(ownerBadgeEl, "OWNER", ownerRes);
+
+    const managerRes = checkDomainField(data.text, "MANAGERDOMAIN");
+    renderBadge(managerBadgeEl, "MANAGER", managerRes);
   }
 
   function showCurrent() {

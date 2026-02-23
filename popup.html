@@ -27,7 +27,7 @@
   <div id="settings-panel" class="settings-panel" style="display: none;">
     <input type="text" id="sellers-url-input" placeholder="https://adwmg.com/sellers.json" />
     <button id="save-settings">Save</button>
-    <button id="force-refresh-cache" title="Force sync: fetch fresh ads.txt/app-ads.txt and update sellers.json by bypassing cache"">Cache</button>
+    <button id="force-refresh-cache" title="Force sync: fetch fresh ads.txt/app-ads.txt and update sellers.json by bypassing cache">Cache</button>
   </div>
 
   <div id="filter-area" class="filter-area">
@@ -37,7 +37,10 @@
     </div>
     <div id="status-container" class="status-container">
       <div id="file-date" class="status-date"></div>
-      <div id="owner-badge" class="badge"></div>
+      <div class="badges-row">
+        <div id="owner-badge" class="badge"></div>
+        <div id="manager-badge" class="badge"></div>
+      </div>
     </div>
   </div>
 
