@@ -34,7 +34,10 @@ async function fetchWithTimeoutAndRetry(url, { timeout = FETCH_TIMEOUT_MS, retri
 }
 
 async function fetchAndCacheSellers() {
-  const config = await new Promise(r => chrome.storage.local.get([CUSTOM_URL_KEY], r));
+  const config = await new Promise(r => chrome.storage.local.get([CUSTOM_URL_KEY], (res) => {
+    if (chrome.runtime.lastError) return r({});
+    r(res || {});
+  }));
   const urlToFetch = config[CUSTOM_URL_KEY] || DEFAULT_SELLERS_URL;
   try {
     const res = await fetchWithTimeoutAndRetry(urlToFetch, { timeout: FETCH_TIMEOUT_MS, retries: FETCH_RETRIES });
@@ -43,7 +46,10 @@ async function fetchAndCacheSellers() {
     const items = {};
     items[CACHE_KEY] = sellers;
     items[CACHE_TS_KEY] = Date.now();
-    await new Promise((resolve) => chrome.storage.local.set(items, resolve));
+    await new Promise((resolve) => chrome.storage.local.set(items, () => {
+      if (chrome.runtime.lastError) return resolve();
+      resolve();
+    }));
     return sellers;
   } catch (err) {
     return null;
@@ -53,6 +59,7 @@ async function fetchAndCacheSellers() {
 function getCachedSellers() {
   return new Promise((resolve) => {
     chrome.storage.local.get([CACHE_KEY, CACHE_TS_KEY], (res) => {
+      if (chrome.runtime.lastError) return resolve({ sellers: [], ts: 0 });
       resolve({
         sellers: Array.isArray(res[CACHE_KEY]) ? res[CACHE_KEY] : [],
         ts: res[CACHE_TS_KEY] || 0
@@ -64,8 +71,14 @@ function getCachedSellers() {
 function applyBadgeForTab(tabId) {
   const count = countsByTab[tabId] || 0;
   const text = count > 0 ? String(count) : "";
-  chrome.action.setBadgeText({ text });
-  if (text) chrome.action.setBadgeBackgroundColor({ color: BADGE_BG_COLOR });
+  chrome.action.setBadgeText({ text }, () => {
+    if (chrome.runtime.lastError) return;
+  });
+  if (text) {
+    chrome.action.setBadgeBackgroundColor({ color: BADGE_BG_COLOR }, () => {
+      if (chrome.runtime.lastError) return;
+    });
+  }
 }
 
 function cancelScheduled(tabId) {
@@ -78,7 +91,10 @@ function cancelScheduled(tabId) {
 }
 
 async function getSellersDomain() {
-  const config = await new Promise(r => chrome.storage.local.get([CUSTOM_URL_KEY], r));
+  const config = await new Promise(r => chrome.storage.local.get([CUSTOM_URL_KEY], (res) => {
+    if (chrome.runtime.lastError) return r({});
+    r(res || {});
+  }));
   const url = config[CUSTOM_URL_KEY] || DEFAULT_SELLERS_URL;
   return getBrandName(url);
 }
@@ -145,7 +161,10 @@ async function executeCountadwmgLines(tabId, origin) {
 async function processScan(tabId) {
   if (Date.now() - (lastScanAt[tabId] || 0) < SCAN_COOLDOWN_MS) return null;
   lastScanAt[tabId] = Date.now();
-  const tab = await new Promise((resolve) => chrome.tabs.get(tabId, (t) => resolve(chrome.runtime.lastError ? null : t)));
+  const tab = await new Promise((resolve) => chrome.tabs.get(tabId, (t) => {
+    if (chrome.runtime.lastError) return resolve(null);
+    resolve(t);
+  }));
   if (!tab || !tab.url || !/^https?:\/\//i.test(tab.url)) return null;
   const origin = new URL(tab.url).origin;
   const scanRes = await executeCountadwmgLines(tabId, origin);
@@ -159,6 +178,7 @@ async function retryScanForTab(tabId) {
   retryAttempts[tabId] = currentAttempts;
   const matches = await processScan(tabId);
   chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+    if (chrome.runtime.lastError) return;
     if (tabs && tabs[0] && tabs[0].id === tabId) applyBadgeForTab(tabId);
   });
   if (matches > 0 || currentAttempts >= MAX_RETRIES) {
@@ -193,8 +213,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       sendResponse({ ok: !!sellers, sellers });
     } else if (message.type === "setBadge") {
       const count = Math.max(0, message.count || 0);
-      chrome.action.setBadgeText({ text: count > 0 ? String(count) : "" });
-      chrome.action.setBadgeBackgroundColor({ color: BADGE_BG_COLOR });
+      chrome.action.setBadgeText({ text: count > 0 ? String(count) : "" }, () => {
+        if (chrome.runtime.lastError) return;
+      });
+      chrome.action.setBadgeBackgroundColor({ color: BADGE_BG_COLOR }, () => {
+        if (chrome.runtime.lastError) return;
+      });
       sendResponse({ ok: true });
     }
   })();

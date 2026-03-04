@@ -294,6 +294,7 @@
     const newUrl = urlInput.value.trim();
     if (newUrl) {
       chrome.storage.local.set({ [CUSTOM_URL_KEY]: newUrl }, () => {
+        if (chrome.runtime.lastError) return;
         currentSellersUrl = newUrl; updateFilterText();
         sendMessageSafe({ type: "refreshSellers" }, () => loadData(true));
       });
@@ -318,9 +319,11 @@
     output.textContent = "Loading...";
     return new Promise((resolve) => {
       chrome.storage.local.get([CUSTOM_URL_KEY], (res) => {
+        if (chrome.runtime.lastError) return resolve();
         if (res[CUSTOM_URL_KEY]) { currentSellersUrl = res[CUSTOM_URL_KEY]; urlInput.value = currentSellersUrl; }
         updateFilterText();
         chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
+          if (chrome.runtime.lastError || !tabs || !tabs[0]) return resolve();
           let origin = ""; try { const u = new URL(tabs[0].url); if (u.protocol.startsWith("http")) { origin = u.origin; currentTabDomain = u.hostname; } } catch {}
           const [adsRes, appRes] = await Promise.all([
             fetchTxtFile(origin, "ads.txt", force),
