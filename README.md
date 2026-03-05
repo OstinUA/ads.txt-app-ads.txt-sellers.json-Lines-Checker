@@ -93,13 +93,3 @@ lines.forEach(line => {
 ├── popup.js           # Core Logic: Parses text files, runs validation, and renders results
 └── utils.js           # Shared Utilities: URL cleaning and Brand Name extraction logic
 ```
-
-## ❤️ Support the Project
-
-If you find this tool useful, consider leaving a ⭐ on GitHub or supporting the author directly:
-
-[![Patreon](https://img.shields.io/badge/Patreon-OstinFCT-f96854?style=flat-square&logo=patreon)](https://www.patreon.com/OstinFCT)
-[![Ko-fi](https://img.shields.io/badge/Ko--fi-fctostin-29abe0?style=flat-square&logo=ko-fi)](https://ko-fi.com/fctostin)
-[![Boosty](https://img.shields.io/badge/Boosty-Support-f15f2c?style=flat-square)](https://boosty.to/ostinfct)
-[![YouTube](https://img.shields.io/badge/YouTube-FCT--Ostin-red?style=flat-square&logo=youtube)](https://www.youtube.com/@FCT-Ostin)
-[![Telegram](https://img.shields.io/badge/Telegram-FCTostin-2ca5e0?style=flat-square&logo=telegram)](https://t.me/FCTostin)
