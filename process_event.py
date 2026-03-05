@@ -69,13 +69,15 @@ if len(diff_text.strip()) < 50:
     print("Diff too small to analyze. Skipping.")
     exit(0)
 
-for issue in repo.get_issues(state="open"):
+open_issues = repo.get_issues(state="open")
+for issue in open_issues[:50]:
     if dedup_key in (issue.body or ""):
         print(f"Issue for {dedup_key} already exists (#{issue.number}), skipping.")
         exit(0)
 
 def was_already_closed(title_keyword: str) -> bool:
-    for issue in repo.get_issues(state="closed"):
+    closed_issues = repo.get_issues(state="closed")
+    for issue in closed_issues[:50]:
         if title_keyword.lower() in (issue.title or "").lower():
             print(f"Similar closed issue found: #{issue.number} — skipping.")
             return True
@@ -229,10 +231,10 @@ if pr_ref:
     summary = result.get("summary", "")
     if summary:
         pr_comment = (
-            f"### 🤖 AI Analysis Summary\n\n"
+            f"###AI Analysis Summary\n\n"
             f"{summary}\n\n"
             f"**Severity:** `{severity.upper()}`\n\n"
-            f"📋 Full details: #{issue.number}"
+            f"Full details: #{issue.number}"
         )
         pr_ref.create_issue_comment(pr_comment)
         print(f"Posted summary comment to PR #{pr_ref.number}")
