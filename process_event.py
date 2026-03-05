@@ -6,10 +6,13 @@ import requests
 from github import Github, Auth
 
 gh_token = os.environ.get("GITHUB_TOKEN")
-gemini_api_key = os.environ.get("GEMINI_API_KEY")
+model_token = os.environ.get("GH_MODELS_TOKEN")
 repo_name = os.environ.get("REPOSITORY")
 event_name = os.environ.get("EVENT_NAME")
 allowed_users = [u.strip().lower() for u in os.environ.get("ALLOWED_USER", "").split(",")]
+
+MODEL_NAME = "Llama-3.3-70B-Instruct"
+ENDPOINT = "https://models.inference.ai.azure.com/chat/completions"
 
 auth = Auth.Token(gh_token)
 gh = Github(auth=auth)
@@ -135,60 +138,37 @@ Context: {event_context}
 Changes: {diff_text}
 {base_instructions}"""
 
-def call_gemini(prompt: str, retries: int = 4, base_delay: int = 15) -> dict:
-    headers = {"Content-Type": "application/json"}
-    models_to_try = [
-        "gemini-2.0-flash",
-        "gemini-2.0-flash-lite",
-        "gemini-1.5-flash",
-    ]
+def call_model(prompt: str, retries: int = 3, delay: int = 5) -> dict:
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {model_token}"
+    }
     payload = {
-        "system_instruction": {
-            "parts": [{"text": "You are a professional software auditor. Always return valid JSON only. No markdown, no explanation, just the JSON object."}]
-        },
-        "contents": [
-            {"parts": [{"text": prompt}]}
+        "messages": [
+            {"role": "system", "content": "You are a professional software auditor. Always return valid JSON only. No markdown, no explanation, just the JSON object."},
+            {"role": "user", "content": prompt}
         ],
-        "generationConfig": {
-            "temperature": 0.1
-        }
+        "model": MODEL_NAME,
+        "temperature": 0.1
     }
 
-    for model in models_to_try:
-        endpoint = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={gemini_api_key}"
-        for attempt in range(retries):
-            try:
-                resp = requests.post(endpoint, headers=headers, json=payload, timeout=60)
+    for attempt in range(retries):
+        try:
+            resp = requests.post(ENDPOINT, headers=headers, json=payload, timeout=60)
+            resp.raise_for_status()
+            data = resp.json()
+            raw = data['choices'][0]['message']['content'].strip()
+            raw = re.sub(r'^```json\s*|```$', '', raw, flags=re.MULTILINE).strip()
+            return json.loads(raw)
+        except Exception as e:
+            print(f"Attempt {attempt + 1} failed: {e}")
+            if attempt < retries - 1:
+                time.sleep(delay)
 
-                if resp.status_code == 429:
-                    wait = base_delay * (2 ** attempt)
-                    print(f"[{model}] Rate limited (429). Waiting {wait}s before retry {attempt + 1}/{retries}...")
-                    time.sleep(wait)
-                    continue
-
-                resp.raise_for_status()
-                data = resp.json()
-                raw = data["candidates"][0]["content"]["parts"][0]["text"].strip()
-                raw = re.sub(r'^```json\s*|```$', '', raw, flags=re.MULTILINE).strip()
-                result = json.loads(raw)
-                print(f"Success with model: {model}")
-                return result
-
-            except requests.exceptions.HTTPError as e:
-                print(f"[{model}] Attempt {attempt + 1} HTTP error: {e}")
-                if attempt < retries - 1:
-                    time.sleep(base_delay)
-            except Exception as e:
-                print(f"[{model}] Attempt {attempt + 1} failed: {e}")
-                if attempt < retries - 1:
-                    time.sleep(base_delay)
-
-        print(f"[{model}] All {retries} attempts failed, trying next model...")
-
-    print("All models exhausted. Exiting gracefully.")
+    print("All attempts failed. Exiting gracefully.")
     exit(0)
 
-result = call_gemini(prompt)
+result = call_model(prompt)
 
 title_keyword = result.get("issue_title", "")[:40]
 if was_already_closed(title_keyword):
