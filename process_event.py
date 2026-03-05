@@ -65,6 +65,10 @@ elif event_name == "pull_request":
 else:
     exit(0)
 
+if len(diff_text.strip()) < 50:
+    print("Diff too small to analyze. Skipping.")
+    exit(0)
+
 for issue in repo.get_issues(state="open"):
     if dedup_key in (issue.body or ""):
         print(f"Issue for {dedup_key} already exists (#{issue.number}), skipping.")
@@ -124,7 +128,12 @@ elif any(l in trigger_labels for l in ["deps", "dependencies"]):
 elif any(l in trigger_labels for l in ["arch", "architecture"]):
     prompt = f"Act as a Software Architect. Review the code changes for architectural issues: violation of separation of concerns, tight coupling, wrong layer dependencies, anti-patterns (God object, spaghetti logic, magic numbers). Reference exact files and lines.\nContext: {event_context}\nChanges: {diff_text}\n{base_instructions}"
 else:
-    prompt = f"Analyze changes and create a standard documentation issue. Include file references.\nContext: {event_context}\nChanges: {diff_text}\n{base_instructions}"
+    prompt = f"""Analyze the following code changes and create a documentation issue summarizing what was changed and why.
+IMPORTANT: Do NOT invent security issues, bugs, or problems that do not exist in the diff.
+If the changes are trivial (e.g. adding imports, minor refactoring), set severity to LOW and describe only what actually changed.
+Context: {event_context}
+Changes: {diff_text}
+{base_instructions}"""
 
 def call_gemini(prompt: str, retries: int = 4, base_delay: int = 15) -> dict:
     headers = {"Content-Type": "application/json"}
@@ -220,10 +229,10 @@ if pr_ref:
     summary = result.get("summary", "")
     if summary:
         pr_comment = (
-            f"###AI Analysis Summary\n\n"
+            f"### 🤖 AI Analysis Summary\n\n"
             f"{summary}\n\n"
             f"**Severity:** `{severity.upper()}`\n\n"
-            f"Full details: #{issue.number}"
+            f"📋 Full details: #{issue.number}"
         )
         pr_ref.create_issue_comment(pr_comment)
         print(f"Posted summary comment to PR #{pr_ref.number}")
