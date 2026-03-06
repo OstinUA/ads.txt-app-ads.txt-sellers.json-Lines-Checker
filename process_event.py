@@ -6,13 +6,10 @@ import requests
 from github import Github, Auth
 
 gh_token = os.environ.get("GITHUB_TOKEN")
-model_token = os.environ.get("GH_MODELS_TOKEN")
+gemini_key = os.environ.get("GEMINI_API_KEY")
 repo_name = os.environ.get("REPOSITORY")
 event_name = os.environ.get("EVENT_NAME")
-allowed_users = [u.strip().lower() for u in os.environ.get("ALLOWED_USER", "").split(",")]
-
-MODEL_NAME = "Llama-3.3-70B-Instruct"
-ENDPOINT = "https://models.inference.ai.azure.com/chat/completions"
+allowed_user = os.environ.get("ALLOWED_USER", "").strip().lower()
 
 auth = Auth.Token(gh_token)
 gh = Github(auth=auth)
@@ -22,7 +19,6 @@ diff_text = ""
 event_context = ""
 author_login = ""
 trigger_labels = []
-dedup_key = ""
 pr_ref = None
 
 if event_name == "push":
@@ -30,40 +26,44 @@ if event_name == "push":
     commit = repo.get_commit(commit_sha)
 
     if len(commit.parents) > 1:
+        print("Merge commit detected, skipping.")
         exit(0)
     if not commit.author:
+        print("No commit author, skipping.")
         exit(0)
 
     author_login = commit.author.login.strip().lower()
-    if author_login not in allowed_users:
+    if author_login != allowed_user:
+        print(f"Author '{author_login}' not allowed, skipping.")
         exit(0)
 
-    dedup_key = f"commit:{commit_sha[:7]}"
     event_context = f"Commit Message: {commit.commit.message}"
     trigger_labels = [m.lower() for m in re.findall(r'\[(.*?)\]', commit.commit.message)]
+    print(f"Labels detected: {trigger_labels}")
 
     for file in commit.files:
         diff_text += f"File: {file.filename}\nPatch:\n{file.patch}\n\n"
-        if len(diff_text) > 10000:
-            diff_text += "\n[Diff truncated...]"
+        if len(diff_text) > 100000:
+            diff_text += "\n[Diff too large, truncated...]"
             break
 
 elif event_name == "pull_request":
     pr_number = int(os.environ.get("PR_NUMBER"))
     pr = repo.get_pull(pr_number)
     author_login = pr.user.login.strip().lower()
-    if author_login not in allowed_users:
+    if author_login != allowed_user:
+        print(f"Author '{author_login}' not allowed, skipping.")
         exit(0)
 
     pr_ref = pr
-    dedup_key = f"PR #{pr_number}"
     event_context = f"PR Title: {pr.title}\nPR Body: {pr.body}"
     trigger_labels = [label.name.lower() for label in pr.labels]
+    print(f"Labels detected: {trigger_labels}")
 
     for file in pr.get_files():
         diff_text += f"File: {file.filename}\nPatch:\n{file.patch}\n\n"
-        if len(diff_text) > 80000:
-            diff_text += "\n[Diff truncated...]"
+        if len(diff_text) > 100000:
+            diff_text += "\n[Diff too large, truncated...]"
             break
 else:
     exit(0)
@@ -72,43 +72,22 @@ if len(diff_text.strip()) < 50:
     print("Diff too small to analyze. Skipping.")
     exit(0)
 
-for issue in repo.get_issues(state="open"):
-    if dedup_key in (issue.body or ""):
-        print(f"Issue for {dedup_key} already exists (#{issue.number}), skipping.")
-        exit(0)
-
-def was_already_closed(title_keyword: str) -> bool:
-    for issue in repo.get_issues(state="closed"):
-        if title_keyword.lower() in (issue.title or "").lower():
-            print(f"Similar closed issue found: #{issue.number} — skipping.")
-            return True
-    return False
-
-def build_permalink(filename: str, line: int = 1) -> str:
-    sha = os.environ.get("COMMIT_SHA") or ""
-    if not sha and pr_ref:
-        sha = pr_ref.head.sha
-    return f"https://github.com/{repo_name}/blob/{sha}/{filename}#L{line}"
-
 base_instructions = """
 Return only a raw JSON object with no markdown formatting. The JSON must have these exact keys:
 
 "issue_title": string — include severity prefix like [CRITICAL], [HIGH], [MEDIUM], or [LOW] at the start,
 "severity": string — one of: critical, high, medium, low,
-"issue_body": string — must include these sections:
+"issue_body": string — MUST be under 3500 characters total. Be concise. Must include these sections:
   ## Problem
-  (clear description with exact file paths and line numbers if known)
+  (2-3 sentences max, with exact file path and line number)
 
   ## Code Reference
-  (the exact problematic code snippet)
+  (only the most relevant snippet, 5-10 lines max)
 
   ## Suggested Fix
-  (concrete code or steps to fix)
+  (concrete and brief, 3-5 lines max)
 
-  ## Permalink
-  (placeholder: PUT_PERMALINK_HERE — will be replaced automatically)
-
-"labels": list of strings — standard GitHub labels plus the severity level,
+"labels": list of strings — choose from: bug, documentation, enhancement, security, good first issue, help wanted, question,
 "affected_file": string — the most relevant filename from the diff (or "" if unknown),
 "affected_line": integer — approximate line number of the issue (or 1 if unknown),
 "summary": string — 2-3 sentence plain-English summary for the PR comment
@@ -138,55 +117,64 @@ Context: {event_context}
 Changes: {diff_text}
 {base_instructions}"""
 
-def call_model(prompt: str, retries: int = 3, delay: int = 5) -> dict:
-    headers = {
-        "Content-Type": "application/json",
-        "Authorization": f"Bearer {model_token}"
-    }
-    payload = {
-        "messages": [
-            {"role": "system", "content": "You are a professional software auditor. Always return valid JSON only. No markdown, no explanation, just the JSON object."},
-            {"role": "user", "content": prompt}
-        ],
-        "model": MODEL_NAME,
-        "temperature": 0.1
-    }
+def call_gemini(prompt: str) -> dict:
+    models_to_try = [
+        "gemini-2.5-flash",
+        "gemini-2.0-flash",
+        "gemini-1.5-flash",
+    ]
+    headers = {"Content-Type": "application/json"}
+    payload = {"contents": [{"parts": [{"text": prompt}]}]}
 
-    for attempt in range(retries):
-        try:
-            resp = requests.post(ENDPOINT, headers=headers, json=payload, timeout=60)
-            resp.raise_for_status()
-            data = resp.json()
-            raw = data['choices'][0]['message']['content'].strip()
-            raw = re.sub(r'^```json\s*|```$', '', raw, flags=re.MULTILINE).strip()
-            return json.loads(raw)
-        except Exception as e:
-            print(f"Attempt {attempt + 1} failed: {e}")
-            if attempt < retries - 1:
-                time.sleep(delay)
+    for model in models_to_try:
+        api_url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={gemini_key}"
+        for attempt in range(4):
+            try:
+                print(f"[{model}] Attempt {attempt + 1}...")
+                resp = requests.post(api_url, json=payload, headers=headers, timeout=60)
 
-    print("All attempts failed. Exiting gracefully.")
+                if resp.status_code == 429:
+                    wait = 15 * (2 ** attempt)
+                    print(f"[{model}] Rate limited. Waiting {wait}s...")
+                    time.sleep(wait)
+                    continue
+
+                resp.raise_for_status()
+                data = resp.json()
+                response_text = data['candidates'][0]['content']['parts'][0]['text'].strip()
+
+                if response_text.startswith("```json"):
+                    response_text = response_text[7:]
+                elif response_text.startswith("```"):
+                    response_text = response_text[3:]
+                if response_text.endswith("```"):
+                    response_text = response_text[:-3]
+
+                result = json.loads(response_text.strip())
+                print(f"Success with model: {model}")
+                return result
+
+            except Exception as e:
+                print(f"[{model}] Attempt {attempt + 1} failed: {e}")
+                if attempt < 3:
+                    time.sleep(10)
+
+        print(f"[{model}] All attempts failed, trying next model...")
+
+    print("All models exhausted. Exiting gracefully.")
     exit(0)
 
-result = call_model(prompt)
-
-title_keyword = result.get("issue_title", "")[:40]
-if was_already_closed(title_keyword):
-    exit(0)
+print("Calling Gemini API...")
+result = call_gemini(prompt)
 
 affected_file = result.get("affected_file", "")
 affected_line = result.get("affected_line", 1)
 
 if affected_file:
-    permalink = build_permalink(affected_file, affected_line)
-    issue_body = result["issue_body"].replace("PUT_PERMALINK_HERE", permalink)
+    sha = os.environ.get("COMMIT_SHA") or (pr_ref.head.sha if pr_ref else "")
+    permalink = f"\n\n**📎 Code Reference:** [View on GitHub](https://github.com/{repo_name}/blob/{sha}/{affected_file}#L{affected_line})"
 else:
-    issue_body = result["issue_body"].replace("PUT_PERMALINK_HERE", "_No specific file identified_")
-
-if event_name == "push":
-    footer = f"\n\n---\n*Generated automatically from commit {os.environ.get('COMMIT_SHA')[:7]}*"
-else:
-    footer = f"\n\n---\n*Generated automatically from {dedup_key}*"
+    permalink = ""
 
 severity = result.get("severity", "medium").lower()
 severity_label_map = {
@@ -195,12 +183,20 @@ severity_label_map = {
     "medium":   "severity: medium",
     "low":      "severity: low",
 }
-extra_labels = [severity_label_map.get(severity, "severity: medium")]
-all_labels = list(set(result.get("labels", []) + extra_labels))
+severity_label = severity_label_map.get(severity, "severity: medium")
+all_labels = list(set(result.get("labels", []) + [severity_label]))
 
+if event_name == "push":
+    footer = f"\n\n---\n*Generated automatically from commit {os.environ.get('COMMIT_SHA')[:7]}*"
+else:
+    footer = f"\n\n---\n*Generated automatically from PR #{os.environ.get('PR_NUMBER')}*"
+
+issue_body = (result['issue_body'] + permalink)[:3800] + footer
+
+print("Creating issue...")
 issue = repo.create_issue(
-    title=result["issue_title"],
-    body=issue_body + footer,
+    title=result['issue_title'],
+    body=issue_body,
     labels=all_labels
 )
 print(f"Created issue #{issue.number}: {issue.title}")
