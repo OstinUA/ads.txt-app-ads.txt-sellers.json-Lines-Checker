@@ -53,7 +53,16 @@
     let href = domain.trim();
     if (!href.startsWith("http")) href = "http://" + href;
     
-    link.href = href;
+    try {
+      const url = new URL(href, window.location.origin);
+      if (url.protocol === "http:" || url.protocol === "https:") {
+        link.href = url.toString();
+      } else {
+        link.href = "about:blank";
+      }
+    } catch (e) {
+      link.href = "about:blank";
+    }
     link.textContent = domain;
     link.target = "_blank";
     link.style.cssText = "color: white; text-decoration: underline; cursor: pointer;";
