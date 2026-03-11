@@ -1,17 +1,24 @@
 (() => {
   function findDomainField(text, fieldName) {
     if (!text) return null;
-    const regex = new RegExp(`^${fieldName}\\s*[=,:]?\\s*([^\\s#,]+)`, "im");
-    const match = text.match(regex);
-    return match ? match[1] : null;
+    const lines = text.split(/\r?\n/);
+    for (const rawLine of lines) {
+      const line = rawLine.replace(/^[\s#]+/, "");
+      const regex = new RegExp(`^${fieldName}\\s*[=,:]?\\s*([^\\s#,]+)`, "i");
+      const match = line.match(regex);
+      if (match) return match[1];
+    }
+    return null;
   }
 
   const content = document.body.innerText || document.body.textContent;
 
   const owner = findDomainField(content, "OWNERDOMAIN");
   const manager = findDomainField(content, "MANAGERDOMAIN");
+  const contact = findDomainField(content, "CONTACT");
+  const contactEmail = findDomainField(content, "CONTACT-EMAIL");
 
-  if (!owner && !manager) return;
+  if (!owner && !manager && !contact && !contactEmail) return;
 
   const container = document.createElement("div");
   container.style.cssText = `
@@ -32,10 +39,15 @@
     line-height: 1.5;
   `;
 
-  const title = document.createElement("div");
-  title.textContent = "Domains Found:";
-  title.style.cssText = "font-size: 12px; color: #aaa; margin-bottom: 8px; text-transform: uppercase; font-weight: bold;";
-  container.appendChild(title);
+  const hasDomains = owner || manager;
+  const hasContact = contact || contactEmail;
+
+  if (hasDomains) {
+    const title = document.createElement("div");
+    title.textContent = "Domains Found:";
+    title.style.cssText = "font-size: 12px; color: #aaa; margin-bottom: 8px; text-transform: uppercase; font-weight: bold;";
+    container.appendChild(title);
+  }
 
   function safeHref(value) {
     if (!value) return null;
@@ -52,8 +64,8 @@
     }
   }
 
-  function createRow(label, domain) {
-    if (!domain) return;
+  function createRow(label, value, isLink) {
+    if (!value) return;
 
     const row = document.createElement("div");
     row.style.marginBottom = "6px";
@@ -64,19 +76,24 @@
     labelSpan.style.marginRight = "5px";
     labelSpan.style.color = "#21aeb3";
 
-    const href = safeHref(domain);
-    if (href) {
-      const link = document.createElement("a");
-      link.href = href;
-      link.textContent = domain;
-      link.target = "_blank";
-      link.rel = "noopener noreferrer";
-      link.style.cssText = "color: white; text-decoration: underline; cursor: pointer;";
-      row.appendChild(labelSpan);
-      row.appendChild(link);
+    if (isLink !== false) {
+      const href = safeHref(value);
+      if (href) {
+        const link = document.createElement("a");
+        link.href = href;
+        link.textContent = value;
+        link.target = "_blank";
+        link.rel = "noopener noreferrer";
+        link.style.cssText = "color: white; text-decoration: underline; cursor: pointer;";
+        row.appendChild(labelSpan);
+        row.appendChild(link);
+      } else {
+        row.appendChild(labelSpan);
+        row.appendChild(document.createTextNode(value));
+      }
     } else {
       row.appendChild(labelSpan);
-      row.appendChild(document.createTextNode(domain));
+      row.appendChild(document.createTextNode(value));
     }
 
     container.appendChild(row);
@@ -84,6 +101,22 @@
 
   createRow("OwnerDomain", owner);
   createRow("ManagerDomain", manager);
+
+  if (hasDomains && hasContact) {
+    const divider = document.createElement("div");
+    divider.style.cssText = "border-top: 1px solid #30363d; margin: 10px 0 15px 0;";
+    container.appendChild(divider);
+  }
+
+  if (hasContact) {
+    const contactTitle = document.createElement("div");
+    contactTitle.textContent = "Contact Info:";
+    contactTitle.style.cssText = "font-size: 12px; color: #aaa; margin-bottom: 8px; text-transform: uppercase; font-weight: bold;";
+    container.appendChild(contactTitle);
+  }
+
+  createRow("Contact", contact);
+  createRow("Contact-email", contactEmail, false);
 
   const closeBtn = document.createElement("div");
   closeBtn.textContent = "×";
