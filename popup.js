@@ -41,10 +41,11 @@
     });
   }
 
-  function updateFilterText() {
-    const brand = getBrandName(currentSellersUrl);
-    filterStatusText.textContent = `Show only ${brand}`;
-  }
+function updateFilterText() {
+  const brand = getBrandName(currentSellersUrl);
+  const icon = isFilterActive ? "✔" : "✖";
+  filterStatusText.innerHTML = `<span class="filter-icon">${icon}</span> Show only ${brand}`;
+}
 
   function countLines(text, isError) {
     if (!text || isError) return "";
@@ -305,7 +306,8 @@
   adsTab.addEventListener("click", () => setActive("ads"));
   appAdsTab.addEventListener("click", () => setActive("appads"));
   sellerTab.addEventListener("click", () => setActive("seller"));
-  filterLeftSection.addEventListener("click", () => { isFilterActive = !isFilterActive; filterArea.classList.toggle("active", isFilterActive); showCurrent(); });
+  filterLeftSection.addEventListener("click", () => { isFilterActive = !isFilterActive; filterArea.classList.toggle("active", isFilterActive); updateFilterText(); showCurrent();
+});
 
   async function loadData(force = false) {
     output.textContent = "Loading...";

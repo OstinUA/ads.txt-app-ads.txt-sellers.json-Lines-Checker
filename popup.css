@@ -17,7 +17,7 @@ html {
 
 body {
   font-family: "Inter", Segoe UI, sans-serif;
-  width: 560px;
+  width: 600px;
   margin: 0;
   padding: 0;
   background: var(--bg-color);
@@ -155,7 +155,13 @@ body {
   margin-top: 2px;
 }
 
-.filter-area.active .filter-status-text { color: var(--brand-color); }
+.filter-area.active .filter-status-text {
+  color: var(--brand-color);
+}
+
+.filter-area:not(.active) .filter-status-text {
+  color: #999;
+}
 
 .link-block {
   font-size: 12px;
@@ -176,8 +182,9 @@ body {
 
 .badges-row {
   display: flex;
-  gap: 4px;
-  justify-content: flex-end;
+  flex-direction: column;
+  gap: 3px;
+  align-items: flex-end;
 }
 
 .status-date {
