@@ -109,7 +109,7 @@ async function executeCountadwmgLines(tabId, origin) {
         }
         function countadwmgLines(text, brand) {
           if (!text) return 0;
-          return text.split("\n").filter(l => l.toLowerCase().includes(brand.toLowerCase())).length;
+          return text.replace(/\r\n|\r/g, "\n").split("\n").filter(l => l.toLowerCase().includes(brand.toLowerCase())).length;
         }
         return (async () => {
           const baseUrl = originUrl.replace(/\/$/, "");
