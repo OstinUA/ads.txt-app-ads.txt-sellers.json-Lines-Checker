@@ -65,10 +65,6 @@ jobs:
 
       - name: Validate JavaScript syntax
         run: |
-          if [ -d api ]; then
-            while IFS= read -r -d '' file; do
-              node --check "$file"
-            done < <(find api -type f -name '*.js' -print0)
-          else
-            echo "No api/ directory found. Skipping JavaScript syntax validation."
-          fi
+          while IFS= read -r -d '' file; do
+            node --check "$file"
+          done < <(find background content shared ui -type f -name '*.js' -print0)
