@@ -21,12 +21,18 @@ function getBrandName(url) {
 
 function cleanDomain(input) {
   if (!input) return "";
-  let d = input.toLowerCase().trim();
-  d = d.replace(/^https?:\/\//, "");
-  d = d.replace(/^www\./, "");
-  d = d.replace(/\.+/g, ".");
-  d = d.split(/[/?#\s,;=:]/)[0];
-  return d;
+  let d = input.trim().toLowerCase();
+  try {
+    const withProtocol = d.includes("://") ? d : "https://" + d;
+    const hostname = new URL(withProtocol).hostname;
+    return hostname.replace(/^www\./, "").replace(/\.+/g, ".");
+  } catch {
+    d = d.replace(/^https?:\/\//, "");
+    d = d.replace(/^www\./, "");
+    d = d.replace(/\.+/g, ".");
+    d = d.split(/[/?#\s,;=:@]/)[0];
+    return d;
+  }
 }
 
 function safeHref(value) {

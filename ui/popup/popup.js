@@ -51,7 +51,12 @@
   function updateFilterText() {
     const brand = getBrandName(currentSellersUrl);
     const icon = isFilterActive ? "✔" : "✖";
-    filterStatusText.innerHTML = `<span class="filter-icon">${icon}</span> Show only ${brand}`;
+    filterStatusText.textContent = "";
+    const iconSpan = document.createElement("span");
+    iconSpan.className = "filter-icon";
+    iconSpan.textContent = icon;
+    filterStatusText.appendChild(iconSpan);
+    filterStatusText.appendChild(document.createTextNode(` Show only ${brand}`));
   }
 
   function countLines(text, isError) {
@@ -136,9 +141,13 @@
     }
   }
 
-  function isIdInSellers(sellerId) {
-    if (!sellersData || sellersData.length === 0) return true;
-    return sellersData.some(s => String(s.seller_id) === String(sellerId));
+  function buildSellerIdSet() {
+    const idSet = new Set();
+    if (!sellersData || sellersData.length === 0) return idSet;
+    for (const s of sellersData) {
+      idSet.add(String(s.seller_id));
+    }
+    return idSet;
   }
 
   function renderTextSafe(container, text) {
@@ -146,6 +155,9 @@
     if (!text) return;
     const brand = getBrandName(currentSellersUrl).toLowerCase();
     const highlightRegex = new RegExp(`(${brand})`, "gi");
+    const sellerIdSet = buildSellerIdSet();
+    const hasSellerData = sellersData && sellersData.length > 0;
+    const fragment = document.createDocumentFragment();
 
     text.split("\n").forEach(line => {
       const trimmedLine = line.trim();
@@ -170,7 +182,7 @@
         const parts = trimmedLine.split(",").map(p => p.trim());
         if (parts.length >= 2) {
           const cleanId = parts[1].split(/\s+/)[0].replace(/[^a-zA-Z0-9]/g, "");
-          if (cleanId && !isIdInSellers(cleanId)) {
+          if (cleanId && hasSellerData && !sellerIdSet.has(cleanId)) {
             isMismatch = true;
             if (!isError && !startsWithSpecial) {
               lineNode.classList.add("line-warning");
@@ -196,8 +208,9 @@
         warnSpan.title = warningTitle;
         lineNode.appendChild(warnSpan);
       }
-      container.appendChild(lineNode);
+      fragment.appendChild(lineNode);
     });
+    container.appendChild(fragment);
   }
 
   function filterAndRender(text, container) {
