@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "adWMG Checker: ads.txt/sellers.json",
-  "version": "6.7.1",
+  "version": "6.7.2",
   "description": "View and filter ads.txt / app-ads.txt files. Automatically matches Company sellers | by OstinUA",
   "icons": {
     "128": "src/assets/icons/icon128.png"
