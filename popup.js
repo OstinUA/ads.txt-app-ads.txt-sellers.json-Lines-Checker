@@ -24,6 +24,13 @@
   const ownerBadgeEl = document.getElementById("owner-badge");
   const managerBadgeEl = document.getElementById("manager-badge");
 
+  const qaBar = document.getElementById("quick-analyzer-bar");
+  const qaLines = document.getElementById("qa-lines");
+  const qaDupes = document.getElementById("qa-dupes");
+  const qaErrors = document.getElementById("qa-errors");
+  const qaRatio = document.getElementById("qa-ratio");
+  const qaBtn = document.getElementById("qa-btn");
+
   let adsData = { text: "", url: "", date: null };
   let appAdsData = { text: "", url: "", date: null };
 
@@ -41,11 +48,11 @@
     });
   }
 
-function updateFilterText() {
-  const brand = getBrandName(currentSellersUrl);
-  const icon = isFilterActive ? "✔" : "✖";
-  filterStatusText.innerHTML = `<span class="filter-icon">${icon}</span> Show only ${brand}`;
-}
+  function updateFilterText() {
+    const brand = getBrandName(currentSellersUrl);
+    const icon = isFilterActive ? "✔" : "✖";
+    filterStatusText.innerHTML = `<span class="filter-icon">${icon}</span> Show only ${brand}`;
+  }
 
   function countLines(text, isError) {
     if (!text || isError) return "";
@@ -307,8 +314,85 @@ function updateFilterText() {
   adsTab.addEventListener("click", () => setActive("ads"));
   appAdsTab.addEventListener("click", () => setActive("appads"));
   sellerTab.addEventListener("click", () => setActive("seller"));
-  filterLeftSection.addEventListener("click", () => { isFilterActive = !isFilterActive; filterArea.classList.toggle("active", isFilterActive); updateFilterText(); showCurrent();
-});
+  filterLeftSection.addEventListener("click", () => { isFilterActive = !isFilterActive; filterArea.classList.toggle("active", isFilterActive); updateFilterText(); showCurrent(); });
+
+  qaBtn.addEventListener("click", () => {
+    if (currentTabDomain) {
+      // Открытие в новом отдельном окне вместо вкладки
+      chrome.windows.create({
+        url: `analyzer.html?domain=${currentTabDomain}`,
+        type: "popup",
+        width: 1050,
+        height: 700
+      });
+    }
+  });
+
+  function calcFileStats(text) {
+    if (!text) return { lines: 0, dupes: 0, errors: 0, direct: 0, reseller: 0 };
+    const lines = text.split("\n");
+    let validLines = 0, errors = 0, direct = 0, reseller = 0;
+    const seen = new Set();
+    let dupes = 0;
+
+    lines.forEach(raw => {
+      const trimmed = raw.trim();
+      if (!trimmed) return;
+
+      const startsSpecial = /^[^a-zA-Z0-9]/.test(trimmed);
+      const hasComma = trimmed.includes(",");
+
+      if (startsSpecial && hasComma) {
+        errors++;
+        return;
+      }
+      if (startsSpecial) return; 
+
+      const upper = trimmed.toUpperCase();
+      if (upper.startsWith("OWNERDOMAIN") || upper.startsWith("MANAGERDOMAIN") || upper.startsWith("CONTACT") || upper.startsWith("SUBDOMAIN")) {
+        return;
+      }
+
+      const parts = trimmed.split(",").map(p => p.trim());
+      if (parts.length < 3) { errors++; return; }
+
+      const domain = parts[0].toLowerCase();
+      const pubId = parts[1];
+      const relationship = parts[2].toUpperCase();
+
+      if (!domain || !pubId || (relationship !== "DIRECT" && relationship !== "RESELLER")) {
+        errors++;
+        return;
+      }
+
+      const key = `${domain}|${pubId}`.toLowerCase();
+      if (seen.has(key)) { dupes++; } else { seen.add(key); }
+
+      validLines++;
+      if (relationship === "DIRECT") direct++;
+      else if (relationship === "RESELLER") reseller++;
+    });
+
+    return { lines: validLines, dupes, errors, direct, reseller };
+  }
+
+  function updateQuickAnalyzer() {
+    if (!qaBar) return;
+    qaBar.style.display = "flex";
+    const adsStats = calcFileStats(adsData.text);
+    const appStats = calcFileStats(appAdsData.text);
+
+    const tLines = adsStats.lines + appStats.lines;
+    const tDupes = adsStats.dupes + appStats.dupes;
+    const tErrors = adsStats.errors + appStats.errors;
+    const tDirect = adsStats.direct + appStats.direct;
+    const tReseller = adsStats.reseller + appStats.reseller;
+
+    qaLines.textContent = tLines;
+    qaDupes.textContent = tDupes;
+    qaErrors.textContent = tErrors;
+    qaRatio.textContent = `${tDirect} / ${tReseller}`;
+  }
 
   async function loadData(force = false) {
     output.textContent = "Loading...";
@@ -327,8 +411,12 @@ function updateFilterText() {
           ]);
           adsData = { text: adsRes.text, url: adsRes.finalUrl || (origin ? `${origin}/ads.txt` : ""), date: adsRes.lastModified };
           appAdsData = { text: appRes.text, url: appRes.finalUrl || (origin ? `${origin}/app-ads.txt` : ""), date: appRes.lastModified };
+          
           adsCountEl.textContent = countLines(adsData.text, adsRes.isError);
           appAdsCountEl.textContent = countLines(appAdsData.text, appRes.isError);
+          
+          updateQuickAnalyzer();
+
           sendMessageSafe({ type: "getSellersCache" }, (resp) => {
             sellersData = (resp && resp.sellers) || [];
             showCurrent(); resolve();

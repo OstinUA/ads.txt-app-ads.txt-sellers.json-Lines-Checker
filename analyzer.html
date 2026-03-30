@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>File Analyzer — ads.txt vs app-ads.txt</title>
+  <link rel="stylesheet" href="analyzer.css" />
+</head>
+<body>
+  <div class="top-bar">
+    <input type="text" id="domain-input" placeholder="Enter domain, e.g. example.com" />
+    <button id="analyze-btn">Analyze Current</button>
+  </div>
+
+  <div id="stats-bar" class="stats-bar" style="display:none;">
+    <div class="stat-group">
+      <h4>ads.txt</h4>
+      <span id="ads-total" class="stat-item">Lines: —</span>
+      <span id="ads-dupes" class="stat-item dupe">Duplicates: —</span>
+      <span id="ads-errors" class="stat-item error">Error: —</span>
+      <span id="ads-ratio" class="stat-item">DIRECT / RESELLER: —</span>
+    </div>
+    <div class="stat-group">
+      <h4>app-ads.txt</h4>
+      <span id="appads-total" class="stat-item">Lines: —</span>
+      <span id="appads-dupes" class="stat-item dupe">Duplicates: —</span>
+      <span id="appads-errors" class="stat-item error">Error: —</span>
+      <span id="appads-ratio" class="stat-item">DIRECT / RESELLER: —</span>
+    </div>
+  </div>
+
+  <div id="workspace" class="workspace" style="display:none;">
+    <div class="column">
+      <div class="column-header">
+        <a id="ads-link" href="#" target="_blank" rel="noopener noreferrer">ads.txt</a>
+        <span id="ads-redirect" class="redirect-badge" style="display:none;">Redirected</span>
+      </div>
+      <div id="ads-content" class="column-body"></div>
+    </div>
+    <div class="column">
+      <div class="column-header">
+        <a id="appads-link" href="#" target="_blank" rel="noopener noreferrer">app-ads.txt</a>
+        <span id="appads-redirect" class="redirect-badge" style="display:none;">Redirected</span>
+      </div>
+      <div id="appads-content" class="column-body"></div>
+    </div>
+  </div>
+
+  <div id="status-msg" class="status-msg">Enter a domain and click Analyze Current to begin.</div>
+
+  <script src="analyzer.js"></script>
+</body>
+</html>
