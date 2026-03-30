@@ -4,7 +4,7 @@
   "version": "6.7.2",
   "description": "View and filter ads.txt / app-ads.txt files. Automatically matches Company sellers | by OstinUA",
   "icons": {
-    "128": "src/assets/icons/icon128.png"
+    "128": "assets/icons/icon128.png"
   },
   "permissions": [
     "tabs",
@@ -16,10 +16,10 @@
     "https://*/*"
   ],
   "background": {
-    "service_worker": "src/background/background.js"
+    "service_worker": "background/background.js"
   },
   "action": {
-    "default_popup": "src/ui/popup/popup.html",
+    "default_popup": "ui/popup/popup.html",
     "default_title": "Lines Checker"
   },
   "content_scripts": [
@@ -30,7 +30,7 @@
         "*://*/*/ads.txt",
         "*://*/*/app-ads.txt"
       ],
-      "js": ["src/content/overlay.js"],
+      "js": ["content/overlay.js"],
       "run_at": "document_idle"
     }
   ]

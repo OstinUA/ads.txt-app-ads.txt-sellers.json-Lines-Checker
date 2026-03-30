@@ -76,26 +76,25 @@ ads.txt-app-ads.txt-sellers.json-Lines-Checker/
 │   └── extension-structure.md
 ├── scripts/
 │   └── restructure_sources.sh
-├── src/
-│   ├── background/
-│   │   └── background.js
-│   ├── content/
-│   │   └── overlay.js
-│   ├── shared/
-│   │   └── utils.js
-│   ├── ui/
-│   │   ├── popup/
-│   │   │   ├── popup.html
-│   │   │   ├── popup.css
-│   │   │   └── popup.js
-│   │   └── analyzer/
-│   │       ├── analyzer.html
-│   │       ├── analyzer.css
-│   │       └── analyzer.js
-│   └── assets/
-│       └── icons/
-│           ├── icon128.png
-│           └── iconlogo.png
+├── background/
+│   └── background.js
+├── content/
+│   └── overlay.js
+├── shared/
+│   └── utils.js
+├── ui/
+│   ├── popup/
+│   │   ├── popup.html
+│   │   ├── popup.css
+│   │   └── popup.js
+│   └── analyzer/
+│       ├── analyzer.html
+│       ├── analyzer.css
+│       └── analyzer.js
+├── assets/
+│   └── icons/
+│       ├── icon128.png
+│       └── iconlogo.png
 ├── trigger action/
 │   └── trigger_action.py
 └── .github/
@@ -109,7 +108,7 @@ ads.txt-app-ads.txt-sellers.json-Lines-Checker/
 ### Key Design Decisions
 
 1. MV3-first architecture with ephemeral service worker state and explicit cache persistence.
-2. Shared utility layer (`src/shared/utils.js`) used by both popup and background runtime.
+2. Shared utility layer (`shared/utils.js`) used by both popup and background runtime.
 3. Defensive network pipeline with timeout/retry controls to reduce flaky fetch failures.
 4. Isolated-world script execution for page-context fetching and count extraction.
 5. Tab-scoped badge state with cooldown + retry scheduling to avoid excessive scan churn.
@@ -187,8 +186,8 @@ The repository currently emphasizes manual and CI static checks over full unit/i
 ### Local Commands
 
 ```bash
-# JavaScript syntax validation (example for full src tree)
-find src -type f -name '*.js' -print0 | xargs -0 -I{} node --check "{}"
+# JavaScript syntax validation (example for root-level extension folders)
+find background content shared ui -type f -name '*.js' -print0 | xargs -0 -I{} node --check "{}"
 
 # Optional lint (if package.json provides a lint script)
 npm run lint --if-present
@@ -239,7 +238,7 @@ No Docker runtime is required for extension execution. If a containerized CI hel
 ### 2) Shared utility usage
 
 ```javascript
-// src/shared/utils.js usage examples
+// shared/utils.js usage examples
 const brand = getBrandName("https://adwmg.com/sellers.json"); // "adwmg"
 const domain = cleanDomain("https://www.Example.com/path?q=1"); // "example.com"
 const href = safeHref("example.com"); // "https://example.com/"
