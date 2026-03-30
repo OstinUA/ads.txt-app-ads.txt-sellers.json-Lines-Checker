@@ -317,16 +317,15 @@
   filterLeftSection.addEventListener("click", () => { isFilterActive = !isFilterActive; filterArea.classList.toggle("active", isFilterActive); updateFilterText(); showCurrent(); });
 
   qaBtn.addEventListener("click", () => {
-    if (currentTabDomain) {
-      // Открытие в новом отдельном окне вместо вкладки
+      const targetUrl = chrome.runtime.getURL(`ui/analyzer/analyzer.html?domain=${currentTabDomain || ""}`);
+    
       chrome.windows.create({
-        url: `../analyzer/analyzer.html?domain=${currentTabDomain}`,
+        url: targetUrl,
         type: "popup",
         width: 1050,
         height: 700
       });
-    }
-  });
+    });
 
   function calcFileStats(text) {
     if (!text) return { lines: 0, dupes: 0, errors: 0, direct: 0, reseller: 0 };
