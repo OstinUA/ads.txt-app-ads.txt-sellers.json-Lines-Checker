@@ -239,6 +239,16 @@
     return sellersData.filter(rec => ids.has(String(rec.seller_id)));
   }
 
+  /**
+   * Update visibility and contents of the status area for the selected view.
+   *
+   * When `type` is "seller" the status area is hidden. For "ads" or "appads" the status
+   * area is shown; the file's Last-Modified date (if present) is formatted as
+   * "Modified: DD.MM.YYYY" and placed into the date element, and OWNER/MANAGER domain
+   * checks are performed and rendered into their respective badges.
+   *
+   * @param {"seller"|"ads"|"appads"} type - The active view type determining what to display.
+   */
   function updateStatusInfo(type) {
     if (type === "seller") { statusContainer.style.display = "none"; return; }
     statusContainer.style.display = "flex";
@@ -255,7 +265,11 @@
     renderBadge(managerBadgeEl, "MANAGER", managerRes);
   }
 
-  // ── Non-closing link: open in new tab via chrome.tabs.create ────────────
+  /**
+   * Create an anchor element that opens the given URL in a new tab or popup without navigating away from the current page.
+   * @param {string} url - The destination URL the link should open.
+   * @param {string} text - The visible text for the link.
+   * @returns {HTMLAnchorElement} The configured anchor element. */
   function createNonClosingLink(url, text) {
     const a = document.createElement("a");
     a.href = url;
@@ -271,6 +285,11 @@
     return a;
   }
 
+  /**
+   * Update the UI to display the active view (seller, ads, or app-ads), render the appropriate content, and update the extension badge count.
+   *
+   * When the active view is "seller", hides status and filter controls, renders matching sellers (highlighting any whose domain equals the current tab's domain), and updates the seller count. For "ads" or "appads", shows status and filter controls, displays the source URL (using a non-closing link when the URL is safe) and renders the file text according to the current filter settings. Always sends a message to set the extension badge to the current number of seller matches.
+   */
   function showCurrent() {
     linkBlock.textContent = "";
     const brand = getBrandName(currentSellersUrl);
@@ -402,6 +421,17 @@
     return { lines: validLines, dupes, errors, direct, reseller };
   }
 
+  /**
+   * Update the quick-analyzer UI with aggregated statistics from the loaded ads and app-ads texts.
+   *
+   * Updates and shows the analyzer bar, fills total lines, duplicates, errors, and the direct/reseller counts,
+   * and sets the D/R ratio display (text and CSS class) according to three states:
+   * - "—" when both direct and reseller counts are zero (neutral),
+   * - a one-decimal numeric ratio when reseller > 0 (green when ratio >= 1, red when < 1),
+   * - "∞" when reseller is zero and direct > 0 (green).
+   *
+   * This function mutates DOM elements: qaBar, qaLines, qaDupes, qaErrors, qaRatio, and qaDR.
+   */
   function updateQuickAnalyzer() {
     if (!qaBar) return;
     qaBar.style.display = "flex";
@@ -436,6 +466,16 @@
     }
   }
 
+  /**
+   * Load ads.txt and app-ads.txt (optionally forcing reload), refresh the sellers cache, and update UI state.
+   *
+   * Reads a custom sellers URL from storage and updates filter text, determines the active tab's origin and domain,
+   * fetches and normalizes ads/app-ads contents (respecting the `force` hint), updates internal data objects
+   * (`adsData`, `appAdsData`), updates line counters and the quick-analyzer, requests the sellers cache to populate
+   * `sellersData`, and re-renders the current view.
+   *
+   * @param {boolean} [force=false] - When true, attempt to bypass cached responses and force reloading remote files.
+   */
   async function loadData(force = false) {
     output.textContent = "Loading...";
     return new Promise((resolve) => {
