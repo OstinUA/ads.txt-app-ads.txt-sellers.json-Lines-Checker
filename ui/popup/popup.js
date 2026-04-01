@@ -255,7 +255,7 @@
     renderBadge(managerBadgeEl, "MANAGER", managerRes);
   }
 
-  // ── Non-closing link: open in new tab via chrome.tabs.create ────────────
+  // Open links in a new tab to keep the popup open.
   function createNonClosingLink(url, text) {
     const a = document.createElement("a");
     a.href = url;
@@ -302,7 +302,6 @@
       if (data.url) {
         const href = safeHref(data.url);
         if (href) {
-          // Use non-closing link instead of regular <a>
           const link = createNonClosingLink(href, data.url);
           linkBlock.appendChild(link);
         } else {
