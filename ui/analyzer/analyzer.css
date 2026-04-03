@@ -385,7 +385,7 @@ body {
 }
 
 .seat-status {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   white-space: nowrap;
   margin-left: auto;
@@ -394,6 +394,7 @@ body {
 .seat-status.confidential { color: var(--yellow); }
 .seat-status.not-verified { color: var(--red); }
 .seat-status.no-sellers { color: var(--muted); }
+.seat-status.timeout { color: var(--blue); }
 .seat-status.pending { color: var(--muted); }
 
 .ssp-group { margin-bottom: 6px; }

@@ -416,13 +416,28 @@
   }
 
   function applyStatus(statusEl, seatId, map, failed, timedOut) {
-    if (timedOut) { statusEl.textContent = "⏱ Timeout"; statusEl.className = "seat-status no-sellers"; }
-    else if (failed || !map) { statusEl.textContent = "🚫 No sellers.json"; statusEl.className = "seat-status no-sellers"; }
+    if (timedOut) { 
+      statusEl.textContent = "⧖ Timeout"; 
+      statusEl.className = "seat-status timeout"; 
+    }
+    else if (failed || !map) { 
+      statusEl.textContent = "∅ No sellers.json"; 
+      statusEl.className = "seat-status no-sellers"; 
+    }
     else {
       const match = map[String(seatId).trim()];
-      if (!match) { statusEl.textContent = "❌ Not found"; statusEl.className = "seat-status not-verified"; }
-      else if (match.is_confidential === 1 || match.is_confidential === true) { statusEl.textContent = "⚠️ Confidential"; statusEl.className = "seat-status confidential"; }
-      else { statusEl.textContent = "✅ Verified"; statusEl.className = "seat-status verified"; }
+      if (!match) { 
+        statusEl.textContent = "✕ Not found"; 
+        statusEl.className = "seat-status not-verified"; 
+      }
+      else if (match.is_confidential === 1 || match.is_confidential === true) { 
+        statusEl.textContent = "! Confidential"; 
+        statusEl.className = "seat-status confidential"; 
+      }
+      else { 
+        statusEl.textContent = "✓ Verified"; 
+        statusEl.className = "seat-status verified"; 
+      }
     }
   }
 

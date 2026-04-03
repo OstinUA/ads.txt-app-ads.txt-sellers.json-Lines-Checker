@@ -2,7 +2,7 @@
 
 A production-oriented, zero-dependency JavaScript logging and validation toolkit for `ads.txt`, `app-ads.txt`, and `sellers.json` observability workflows.
 
-[![Version](https://img.shields.io/badge/version-7.2.0-21aeb3?style=for-the-badge)](manifest.json)
+[![Version](https://img.shields.io/badge/version-7.2.1-21aeb3?style=for-the-badge)](manifest.json)
 [![Build](https://img.shields.io/badge/CI-GitHub_Actions-2088FF?style=for-the-badge&logo=github-actions&logoColor=white)](.github/workflows/lint.yml)
 [![SAST](https://img.shields.io/badge/SAST-CodeQL-7a43b6?style=for-the-badge)](.github/workflows/sast.yml)
 [![OpenSSF Scorecard](https://img.shields.io/badge/Supply_Chain-Scorecard-0f766e?style=for-the-badge)](.github/workflows/scorecard.yml)
