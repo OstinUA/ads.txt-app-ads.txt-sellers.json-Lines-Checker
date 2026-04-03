@@ -1,3 +1,8 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   analyzer.css — Enhanced ads.txt / app-ads.txt Analyzer (Light Theme)
+   Version 7.0.1
+   ═══════════════════════════════════════════════════════════════════════════ */
+
 :root {
   --brand-color: #21aeb3;
   --brand-glow: rgba(33, 174, 179, 0.1);
@@ -40,6 +45,7 @@ body {
   overflow: hidden;
 }
 
+/* ── Top bar ─────────────────────────────────────────────────────────────── */
 .top-bar {
   display: flex;
   gap: 10px;
@@ -78,6 +84,7 @@ body {
 .top-bar button:hover { opacity: 0.88; }
 .top-bar button:disabled { opacity: 0.4; cursor: not-allowed; }
 
+/* ── Stats bar ───────────────────────────────────────────────────────────── */
 .stats-bar {
   display: flex;
   gap: 0;
@@ -124,6 +131,7 @@ body {
 .stat-item.ratio-red { background: var(--red-bg); color: var(--red); border-color: var(--red-border); font-weight: 700; }
 .stat-item.ratio-neutral { background: var(--surface2); color: var(--muted); border-color: var(--border-light); }
 
+/* ── Workspace ───────────────────────────────────────────────────────────── */
 .workspace {
   flex: 1;
   display: flex;
@@ -144,6 +152,7 @@ body {
   box-shadow: var(--shadow);
 }
 
+/* ── Column header ───────────────────────────────────────────────────────── */
 .column-header {
   padding: 9px 14px;
   background: var(--dark-header);
@@ -176,6 +185,7 @@ body {
   border: 1px solid rgba(252, 211, 77, 0.3);
 }
 
+/* ── Search bar per column ───────────────────────────────────────────────── */
 .column-search {
   display: flex;
   align-items: center;
@@ -228,6 +238,7 @@ body {
 .search-nav-btn:hover { border-color: var(--brand-color); color: var(--brand-color); background: var(--brand-glow); }
 .search-nav-btn:disabled { opacity: 0.3; cursor: not-allowed; }
 
+/* ── Column body (line content) ──────────────────────────────────────────── */
 .column-body {
   flex: 1;
   overflow-y: auto;
@@ -245,6 +256,7 @@ body {
 .column-body::-webkit-scrollbar-thumb { background: var(--scrollbar); border-radius: 4px; }
 .column-body::-webkit-scrollbar-thumb:hover { background: var(--brand-color); }
 
+/* ── Seat verification panel ─────────────────────────────────────────────── */
 .seat-panel {
   flex-shrink: 0;
   border-top: 1px solid var(--border-color);
@@ -395,6 +407,7 @@ body {
   padding: 0 2px;
 }
 
+/* ── Progress bar ────────────────────────────────────────────────────────── */
 .verify-progress {
   display: none;
   padding: 6px 12px;
@@ -423,6 +436,7 @@ body {
 .progress-msg { color: var(--purple); font-style: italic; }
 .progress-count { color: var(--muted); font-family: "Consolas", monospace; }
 
+/* ── Line highlight classes ──────────────────────────────────────────────── */
 .line { display: block; padding: 2px 5px; border-radius: 3px; }
 .line-error { background: var(--red-bg); color: var(--red); border-left: 3px solid var(--red); }
 .line-duplicate { background: var(--yellow-bg); color: #866a00; border-left: 3px solid var(--yellow); }
@@ -449,6 +463,7 @@ mark.seat-highlight {
   padding: 0 1px;
 }
 
+/* ── Status message ──────────────────────────────────────────────────────── */
 .status-msg {
   padding: 40px;
   text-align: center;

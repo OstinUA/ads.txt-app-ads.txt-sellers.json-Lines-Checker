@@ -265,6 +265,7 @@ body {
   font-weight: 700;
 }
 
+/* D/R ratio color coding in quick stats */
 .qa-dr-value.dr-green {
   color: #0ca678;
 }

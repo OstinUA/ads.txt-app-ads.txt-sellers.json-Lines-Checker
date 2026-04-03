@@ -1,20 +1,27 @@
 (() => {
+  /* ═══════════════════════════════════════════════════════════════════════════
+     analyzer.js — Enhanced ads.txt / app-ads.txt Analyzer
+     Version 7.0.1
+     ═══════════════════════════════════════════════════════════════════════════ */
 
-  // DOM references
+  // ── DOM refs: top bar & status ──────────────────────────────────────────
   const domainInput  = document.getElementById("domain-input");
   const analyzeBtn   = document.getElementById("analyze-btn");
   const statsBar     = document.getElementById("stats-bar");
   const workspace    = document.getElementById("workspace");
   const statusMsg    = document.getElementById("status-msg");
 
+  // ── DOM refs: column content ────────────────────────────────────────────
   const adsContent    = document.getElementById("ads-content");
   const appadsContent = document.getElementById("appads-content");
 
+  // ── DOM refs: column headers / links ────────────────────────────────────
   const adsLink        = document.getElementById("ads-link");
   const appadsLink     = document.getElementById("appads-link");
   const adsRedirect    = document.getElementById("ads-redirect");
   const appadsRedirect = document.getElementById("appads-redirect");
 
+  // ── DOM refs: stats ─────────────────────────────────────────────────────
   const adsTotal         = document.getElementById("ads-total");
   const adsDupes         = document.getElementById("ads-dupes");
   const adsErrors        = document.getElementById("ads-errors");
@@ -24,16 +31,19 @@
   const appadsErrors       = document.getElementById("appads-errors");
   const appadsRatioDisplay = document.getElementById("appads-ratio-display");
 
+  // ── DOM refs: search (ads) ──────────────────────────────────────────────
   const adsSearchInput = document.getElementById("ads-search");
   const adsSearchCount = document.getElementById("ads-search-count");
   const adsSearchPrev  = document.getElementById("ads-search-prev");
   const adsSearchNext  = document.getElementById("ads-search-next");
 
+  // ── DOM refs: search (appads) ───────────────────────────────────────────
   const appadsSearchInput = document.getElementById("appads-search");
   const appadsSearchCount = document.getElementById("appads-search-count");
   const appadsSearchPrev  = document.getElementById("appads-search-prev");
   const appadsSearchNext  = document.getElementById("appads-search-next");
 
+  // ── DOM refs: seat panels ───────────────────────────────────────────────
   const adsSeatPanel       = document.getElementById("ads-seat-panel");
   const adsSspDropdown     = document.getElementById("ads-ssp-dropdown");
   const adsVerifyBtn       = document.getElementById("ads-verify-btn");
@@ -54,7 +64,9 @@
   const appadsProgressMsg     = document.getElementById("appads-progress-msg");
   const appadsProgressCount   = document.getElementById("appads-progress-count");
 
-  // Keep analyzer links in a new tab so users do not lose this view.
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 1. LINK NAVIGATION — open in new tab instead of navigating away
+  // ═══════════════════════════════════════════════════════════════════════════
 
   function setupLinkNavigation(linkEl) {
     linkEl.addEventListener("click", (e) => {
@@ -71,6 +83,10 @@
 
   setupLinkNavigation(adsLink);
   setupLinkNavigation(appadsLink);
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 2. DOMAIN NORMALIZATION & FETCH
+  // ═══════════════════════════════════════════════════════════════════════════
 
   function normalizeDomain(raw) {
     let d = raw.trim().toLowerCase();
@@ -106,6 +122,10 @@
       return { text: null, error: e.message || "Network error", isRedirect: false };
     }
   }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 3. PARSING & ANALYSIS
+  // ═══════════════════════════════════════════════════════════════════════════
 
   function parseLine(raw) {
     const trimmed = raw.trim();
@@ -173,6 +193,10 @@
     return { lines, totalData, duplicates, errors, direct, reseller, keySet, seatsBySSP };
   }
 
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 4. SPO RATIO
+  // ═══════════════════════════════════════════════════════════════════════════
+
   function computeRatio(direct, reseller) {
     if (reseller > 0) {
       const r = direct / reseller;
@@ -182,6 +206,10 @@
     }
     return { text: "N/A", cls: "neutral" };
   }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 5. RENDERING
+  // ═══════════════════════════════════════════════════════════════════════════
 
   function renderColumn(container, analysis, otherKeySet) {
     container.innerHTML = "";
@@ -221,6 +249,10 @@
     ratioEl.textContent = `D/R: ${ratio.text}`;
     ratioEl.className = `stat-item ratio-${ratio.cls}`;
   }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 6. SEARCH SYSTEM
+  // ═══════════════════════════════════════════════════════════════════════════
 
   function createSearchController(searchInput, countEl, prevBtn, nextBtn, contentEl) {
     let matches = [];
@@ -356,6 +388,10 @@
   const adsSearch = createSearchController(adsSearchInput, adsSearchCount, adsSearchPrev, adsSearchNext, adsContent);
   const appadsSearch = createSearchController(appadsSearchInput, appadsSearchCount, appadsSearchPrev, appadsSearchNext, appadsContent);
 
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 7. SEAT VERIFICATION
+  // ═══════════════════════════════════════════════════════════════════════════
+
   const sellersJsonCache = {};
 
   async function fetchSellersJson(domain) {
@@ -449,7 +485,7 @@
     const sspList = Object.keys(seatsBySSP).sort();
     if (sspList.length === 0) { seatPanel.style.display = "none"; return; }
     seatPanel.style.display = "flex";
-    sspDropdown.innerHTML = '<option value="">— SSP / Exchange —</option>';
+    sspDropdown.innerHTML = '<option value="">Select SSP</option>';
     sspList.forEach(domain => {
       const opt = document.createElement("option");
       opt.value = domain;
@@ -523,6 +559,10 @@
       verifyAllBtn.disabled = false;
     };
   }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 8. MAIN ANALYSIS FLOW
+  // ═══════════════════════════════════════════════════════════════════════════
 
   async function runAnalysis(domain) {
     domain = normalizeDomain(domain);
@@ -603,6 +643,10 @@
       contentEl: appadsContent
     });
   }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 9. EVENT LISTENERS
+  // ═══════════════════════════════════════════════════════════════════════════
 
   const initialDomain = normalizeDomain(new URLSearchParams(window.location.search).get("domain") || "");
   if (initialDomain) domainInput.value = initialDomain;

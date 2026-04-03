@@ -1,8 +1,8 @@
-<a href="https://github.com/OstinUA" target="_blank" rel="noopener"><img src="https://raw.githubusercontent.com/OstinUA/Image-storage/main/readme/readme-SVG-ads.txt-app-ads.txt-sellers.json-Lines-Checker.png" valign="middle" alt="readme SVG ads.txt app ads.txt sellers.json Lines Checker"></a>
+![adops Validator](https://capsule-render.vercel.app/api?type=blur&height=200&color=21aeb3&text=adops%20Validator&textBg=false&fontSize=70&fontAlign=50&section=header&fontColor=ffffff&stroke=000000)
 
 > A zero-dependency Chrome Extension (Manifest V3) for AdOps engineers to validate `ads.txt` and `app-ads.txt` inventories, cross-reference seller IDs against a `sellers.json` registry, and surface syntax errors or configuration mismatches in real-time — directly in the browser.
 
-[![Version](https://img.shields.io/badge/version-7.0.0-21aeb3?style=for-the-badge)](manifest.json)
+[![Version](https://img.shields.io/badge/version-7.0.1-21aeb3?style=for-the-badge)](manifest.json)
 [![Platform](https://img.shields.io/badge/platform-Chrome_Extension-4285F4?style=for-the-badge&logo=google-chrome&logoColor=white)](https://developer.chrome.com/docs/extensions/mv3/)
 [![Manifest](https://img.shields.io/badge/manifest-V3-2ea44f?style=for-the-badge)](manifest.json)
 [![Category](https://img.shields.io/badge/category-AdOps-orange?style=for-the-badge)](https://iabtechlab.com/ads-txt/)
