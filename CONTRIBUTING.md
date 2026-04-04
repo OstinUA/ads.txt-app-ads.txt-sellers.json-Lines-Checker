@@ -67,7 +67,6 @@ Bug report template (recommended):
 ### Reproduction Steps
 1.
 2.
-3.
 
 ### Expected Behavior
 
