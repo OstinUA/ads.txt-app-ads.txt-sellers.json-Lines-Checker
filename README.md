@@ -2,19 +2,12 @@
 
 > A zero-dependency Chrome Extension (Manifest V3) for AdOps engineers to validate `ads.txt` and `app-ads.txt` inventories, cross-reference seller IDs against a `sellers.json` registry, and surface syntax errors or configuration mismatches in real-time — directly in the browser.
 
-[![Version](https://img.shields.io/badge/version-7.2.0-21aeb3?style=for-the-badge)](https://github.com/OstinUA/ads.txt-app-ads.txt-sellers.json-Lines-Checker/releases)
-[![Platform](https://img.shields.io/badge/platform-Chrome_Extension-4285F4?style=for-the-badge&logo=google-chrome&logoColor=white)](https://chromewebstore.google.com/detail/adwmg-checker-adstxtselle/gdmhmbejelimkohnpineofcgdigocdog)
-[![Build](https://img.shields.io/badge/CI-GitHub_Actions-2088FF?style=for-the-badge&logo=github-actions&logoColor=white)](.github/workflows/lint.yml)
-[![SAST](https://img.shields.io/badge/SAST-CodeQL-7a43b6?style=for-the-badge)](.github/workflows/sast.yml)
-[![OpenSSF Scorecard](https://img.shields.io/badge/Supply_Chain-Scorecard-0f766e?style=for-the-badge)](.github/workflows/scorecard.yml)
-[![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-blue?style=for-the-badge)](LICENSE)
+[![Version](https://img.shields.io/badge/version-7.3.0-21aeb3?style=for-the-badge)](manifest.json)
+[![Platform](https://img.shields.io/badge/platform-Chrome_Extension-4285F4?style=for-the-badge&logo=google-chrome&logoColor=white)](https://developer.chrome.com/docs/extensions/mv3/)
 [![Manifest](https://img.shields.io/badge/manifest-V3-2ea44f?style=for-the-badge)](manifest.json)
 [![Category](https://img.shields.io/badge/category-AdOps-orange?style=for-the-badge)](https://iabtechlab.com/ads-txt/)
+[![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-blue?style=for-the-badge)](LICENSE)
 [![Repo Size](https://img.shields.io/github/repo-size/OstinUA/ads.txt-app-ads.txt-sellers.json-Lines-Checker?style=for-the-badge)](https://github.com/OstinUA/ads.txt-app-ads.txt-sellers.json-Lines-Checker)
-[![Last Commit](https://img.shields.io/github/last-commit/OstinUA/ads.txt-app-ads.txt-sellers.json-Lines-Checker?style=for-the-badge)](https://github.com/OstinUA/ads.txt-app-ads.txt-sellers.json-Lines-Checker/commits/main)
-
-[![Chrome Web Store Users](https://img.shields.io/chrome-web-store/users/gdmhmbejelimkohnpineofcgdigocdog?style=for-the-badge&color=21aeb3)](https://chromewebstore.google.com/detail/adwmg-checker-adstxtselle/gdmhmbejelimkohnpineofcgdigocdog)
-[![Chrome Web Store Rating](https://img.shields.io/chrome-web-store/rating/gdmhmbejelimkohnpineofcgdigocdog?style=for-the-badge&color=21aeb3)](https://chromewebstore.google.com/detail/adwmg-checker-adstxtselle/gdmhmbejelimkohnpineofcgdigocdog)
 
 > [!NOTE]
 > The project is intentionally lightweight: no npm runtime dependency graph is required to run the extension.
