@@ -226,6 +226,7 @@
 
     document.body.innerHTML = "";
     document.body.style.margin = "0";
+    document.body.style.paddingTop = "30px";
     
     const newPre = document.createElement("pre");
     newPre.style.wordWrap = "break-word";
@@ -241,6 +242,49 @@
     if (container) {
       document.body.appendChild(container);
     }
+
+    const leftContainer = document.createElement("div");
+    leftContainer.style.cssText = `
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      z-index: 2147483647;
+      display: flex;
+      align-items: center;
+    `;
+
+    const analyzeBtn = document.createElement("button");
+    analyzeBtn.textContent = "Analyzer .txt file";
+    analyzeBtn.style.cssText = `
+      background: transparent;
+      color: #fff;
+      border: 1px solid #8896a6;
+      padding: 3px 8px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: 500;
+      font-size: 12px;
+      font-family: 'Segoe UI', Helvetica, Arial, sans-serif;
+      transition: background 0.2s, color 0.2s;
+      outline: none;
+    `;
+    
+    analyzeBtn.onmouseover = () => {
+      analyzeBtn.style.background = "#21aeb3";
+      analyzeBtn.style.color = "#000";
+    };
+    analyzeBtn.onmouseout = () => {
+      analyzeBtn.style.background = "transparent";
+      analyzeBtn.style.color = "#fff";
+    };
+    
+    analyzeBtn.onclick = () => {
+      const currentDomain = window.location.hostname;
+      chrome.runtime.sendMessage({ type: "openAnalyzer", domain: currentDomain });
+    };
+
+    leftContainer.appendChild(analyzeBtn);
+    document.body.appendChild(leftContainer);
   }
 
   applySyntaxHighlighting();

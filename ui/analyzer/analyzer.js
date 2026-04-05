@@ -43,22 +43,22 @@
   const appadsSearchPrev  = document.getElementById("appads-search-prev");
   const appadsSearchNext  = document.getElementById("appads-search-next");
 
-  // ── DOM refs: seat panels ───────────────────────────────────────────────
-  const adsSeatPanel       = document.getElementById("ads-seat-panel");
+  // ── DOM refs: line panels ───────────────────────────────────────────────
+  const adslinePanel       = document.getElementById("ads-line-panel");
   const adsSspDropdown     = document.getElementById("ads-ssp-dropdown");
   const adsVerifyBtn       = document.getElementById("ads-verify-btn");
   const adsVerifyAllBtn    = document.getElementById("ads-verify-all-btn");
-  const adsSeatResults     = document.getElementById("ads-seat-results");
+  const adslineResults     = document.getElementById("ads-line-results");
   const adsVerifyProgress  = document.getElementById("ads-verify-progress");
   const adsProgressBar     = document.getElementById("ads-progress-bar");
   const adsProgressMsg     = document.getElementById("ads-progress-msg");
   const adsProgressCount   = document.getElementById("ads-progress-count");
 
-  const appadsSeatPanel       = document.getElementById("appads-seat-panel");
+  const appadslinePanel       = document.getElementById("appads-line-panel");
   const appadsSspDropdown     = document.getElementById("appads-ssp-dropdown");
   const appadsVerifyBtn       = document.getElementById("appads-verify-btn");
   const appadsVerifyAllBtn    = document.getElementById("appads-verify-all-btn");
-  const appadsSeatResults     = document.getElementById("appads-seat-results");
+  const appadslineResults     = document.getElementById("appads-line-results");
   const appadsVerifyProgress  = document.getElementById("appads-verify-progress");
   const appadsProgressBar     = document.getElementById("appads-progress-bar");
   const appadsProgressMsg     = document.getElementById("appads-progress-msg");
@@ -161,7 +161,7 @@
   function analyzeFile(text) {
     if (!text) return {
       lines: [], totalData: 0, duplicates: new Set(), errors: 0,
-      direct: 0, reseller: 0, keySet: new Set(), seatsBySSP: {}
+      direct: 0, reseller: 0, keySet: new Set(), linesBySSP: {}
     };
     const rawLines = text.split("\n");
     const lines = rawLines.map(parseLine);
@@ -169,7 +169,7 @@
     const duplicates = new Set();
     let errors = 0, direct = 0, reseller = 0;
     const keySet = new Set();
-    const seatsBySSP = {};
+    const linesBySSP = {};
 
     lines.forEach((line, idx) => {
       if (line.type === "error") {
@@ -184,13 +184,13 @@
         keySet.add(line.key);
         if (line.relationship === "DIRECT") direct++;
         else reseller++;
-        if (!seatsBySSP[line.domain]) seatsBySSP[line.domain] = [];
-        seatsBySSP[line.domain].push({ id: line.pubId, type: line.relationship });
+        if (!linesBySSP[line.domain]) linesBySSP[line.domain] = [];
+        linesBySSP[line.domain].push({ id: line.pubId, type: line.relationship });
       }
     });
 
     const totalData = lines.filter(l => l.type === "data").length;
-    return { lines, totalData, duplicates, errors, direct, reseller, keySet, seatsBySSP };
+    return { lines, totalData, duplicates, errors, direct, reseller, keySet, linesBySSP };
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -389,7 +389,7 @@
   const appadsSearch = createSearchController(appadsSearchInput, appadsSearchCount, appadsSearchPrev, appadsSearchNext, appadsContent);
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // 7. SEAT VERIFICATION
+  // 7. line VERIFICATION
   // ═══════════════════════════════════════════════════════════════════════════
 
   const sellersJsonCache = {};
@@ -415,46 +415,46 @@
     }
   }
 
-  function applyStatus(statusEl, seatId, map, failed, timedOut) {
+  function applyStatus(statusEl, lineId, map, failed, timedOut) {
     if (timedOut) { 
       statusEl.textContent = "⧖ Timeout"; 
-      statusEl.className = "seat-status timeout"; 
+      statusEl.className = "line-status timeout"; 
     }
     else if (failed || !map) { 
       statusEl.textContent = "∅ No sellers.json"; 
-      statusEl.className = "seat-status no-sellers"; 
+      statusEl.className = "line-status no-sellers"; 
     }
     else {
-      const match = map[String(seatId).trim()];
+      const match = map[String(lineId).trim()];
       if (!match) { 
         statusEl.textContent = "✕ Not found"; 
-        statusEl.className = "seat-status not-verified"; 
+        statusEl.className = "line-status not-verified"; 
       }
       else if (match.is_confidential === 1 || match.is_confidential === true) { 
         statusEl.textContent = "! Confidential"; 
-        statusEl.className = "seat-status confidential"; 
+        statusEl.className = "line-status confidential"; 
       }
       else { 
         statusEl.textContent = "✓ Verified"; 
-        statusEl.className = "seat-status verified"; 
+        statusEl.className = "line-status verified"; 
       }
     }
   }
 
-  function buildSeatRow(seatId, type, onClickSeat) {
+  function buildlineRow(lineId, type, onClickline) {
     const row = document.createElement("div");
-    row.className = "seat-row";
-    row.dataset.seatId = seatId;
+    row.className = "line-row";
+    row.dataset.lineId = lineId;
     const idEl = document.createElement("span");
-    idEl.className = "seat-id";
-    idEl.textContent = seatId;
+    idEl.className = "line-id";
+    idEl.textContent = lineId;
     idEl.title = "Click to locate in file";
-    idEl.addEventListener("click", () => onClickSeat(seatId));
+    idEl.addEventListener("click", () => onClickline(lineId));
     const typeEl = document.createElement("span");
-    typeEl.className = `seat-type ${type === "DIRECT" ? "direct" : "reseller"}`;
+    typeEl.className = `line-type ${type === "DIRECT" ? "direct" : "reseller"}`;
     typeEl.textContent = type;
     const statusEl = document.createElement("span");
-    statusEl.className = "seat-status pending";
+    statusEl.className = "line-status pending";
     statusEl.textContent = "—";
     row.appendChild(idEl);
     row.appendChild(typeEl);
@@ -462,15 +462,15 @@
     return row;
   }
 
-  function scrollToSeat(contentEl, seatId) {
-    contentEl.querySelectorAll("mark.seat-highlight").forEach(m => {
+  function scrollToline(contentEl, lineId) {
+    contentEl.querySelectorAll("mark.line-highlight").forEach(m => {
       const p = m.parentNode; p.replaceChild(document.createTextNode(m.textContent), m); p.normalize();
     });
     const lines = contentEl.querySelectorAll(".line");
     let target = null;
-    for (const line of lines) { if (line.textContent.includes(seatId)) { target = line; break; } }
+    for (const line of lines) { if (line.textContent.includes(lineId)) { target = line; break; } }
     if (!target) return;
-    const escaped = seatId.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const escaped = lineId.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     const regex = new RegExp(`(${escaped})`);
     const walker = document.createTreeWalker(target, NodeFilter.SHOW_TEXT, null);
     const textNodes = [];
@@ -480,10 +480,10 @@
       if (!match) continue;
       const idx = match.index;
       const before = node.textContent.substring(0, idx);
-      const matched = node.textContent.substring(idx, idx + seatId.length);
-      const after = node.textContent.substring(idx + seatId.length);
+      const matched = node.textContent.substring(idx, idx + lineId.length);
+      const after = node.textContent.substring(idx + lineId.length);
       const mark = document.createElement("mark");
-      mark.className = "seat-highlight";
+      mark.className = "line-highlight";
       mark.textContent = matched;
       const parent = node.parentNode;
       if (before) parent.insertBefore(document.createTextNode(before), node);
@@ -495,29 +495,29 @@
     target.scrollIntoView({ block: "nearest", behavior: "smooth" });
   }
 
-  function setupSeatPanel(opts) {
-    const { seatsBySSP, seatPanel, sspDropdown, verifyBtn, verifyAllBtn, seatResults, verifyProgress, progressBar, progressMsg, progressCount, contentEl } = opts;
-    const sspList = Object.keys(seatsBySSP).sort();
-    if (sspList.length === 0) { seatPanel.style.display = "none"; return; }
-    seatPanel.style.display = "flex";
+  function setuplinePanel(opts) {
+    const { linesBySSP, linePanel, sspDropdown, verifyBtn, verifyAllBtn, lineResults, verifyProgress, progressBar, progressMsg, progressCount, contentEl } = opts;
+    const sspList = Object.keys(linesBySSP).sort();
+    if (sspList.length === 0) { linePanel.style.display = "none"; return; }
+    linePanel.style.display = "flex";
     sspDropdown.innerHTML = '<option value=""> Select SSP platform</option>';
     sspList.forEach(domain => {
       const opt = document.createElement("option");
       opt.value = domain;
-      const count = seatsBySSP[domain].length;
-      opt.textContent = `${domain}  (${count} seat${count !== 1 ? "s" : ""})`;
+      const count = linesBySSP[domain].length;
+      opt.textContent = `${domain}  (${count} line${count !== 1 ? "s" : ""})`;
       sspDropdown.appendChild(opt);
     });
     verifyAllBtn.disabled = false;
 
     sspDropdown.onchange = () => {
       const selected = sspDropdown.value;
-      seatResults.innerHTML = "";
+      lineResults.innerHTML = "";
       verifyBtn.disabled = true;
-      if (!selected || !seatsBySSP[selected]) return;
+      if (!selected || !linesBySSP[selected]) return;
       verifyBtn.disabled = false;
-      seatsBySSP[selected].forEach(seat => {
-        seatResults.appendChild(buildSeatRow(seat.id, seat.type, (id) => scrollToSeat(contentEl, id)));
+      linesBySSP[selected].forEach(line => {
+        lineResults.appendChild(buildlineRow(line.id, line.type, (id) => scrollToline(contentEl, id)));
       });
     };
 
@@ -526,17 +526,17 @@
       if (!selected) return;
       verifyBtn.disabled = true;
       verifyBtn.textContent = "…";
-      seatResults.querySelectorAll(".seat-status").forEach(el => { el.textContent = "Fetching…"; el.className = "seat-status pending"; });
+      lineResults.querySelectorAll(".line-status").forEach(el => { el.textContent = "Fetching…"; el.className = "line-status pending"; });
       const { map, failed, timedOut } = await fetchSellersJson(selected);
-      seatResults.querySelectorAll(".seat-row").forEach(row => {
-        applyStatus(row.querySelector(".seat-status"), row.dataset.seatId, map, failed, timedOut);
+      lineResults.querySelectorAll(".line-row").forEach(row => {
+        applyStatus(row.querySelector(".line-status"), row.dataset.lineId, map, failed, timedOut);
       });
       verifyBtn.textContent = "Verify";
       verifyBtn.disabled = false;
     };
 
     verifyAllBtn.onclick = async () => {
-      seatResults.innerHTML = "";
+      lineResults.innerHTML = "";
       sspDropdown.value = "";
       verifyBtn.disabled = true;
       verifyAllBtn.disabled = true;
@@ -558,15 +558,15 @@
         group.className = "ssp-group";
         const label = document.createElement("div");
         label.className = "ssp-group-label";
-        label.textContent = `${domain}  (${seatsBySSP[domain].length} seats)`;
+        label.textContent = `${domain}  (${linesBySSP[domain].length} lines)`;
         group.appendChild(label);
         const { map, failed, timedOut } = localCache[domain];
-        seatsBySSP[domain].forEach(seat => {
-          const row = buildSeatRow(seat.id, seat.type, (id) => scrollToSeat(contentEl, id));
-          applyStatus(row.querySelector(".seat-status"), seat.id, map, failed, timedOut);
+        linesBySSP[domain].forEach(line => {
+          const row = buildlineRow(line.id, line.type, (id) => scrollToline(contentEl, id));
+          applyStatus(row.querySelector(".line-status"), line.id, map, failed, timedOut);
           group.appendChild(row);
         });
-        seatResults.appendChild(group);
+        lineResults.appendChild(group);
       });
       verifyProgress.classList.remove("visible");
       progressCount.textContent = "";
@@ -594,8 +594,8 @@
     analyzeBtn.disabled = true;
     adsSearch.reset();
     appadsSearch.reset();
-    adsSeatPanel.style.display = "none";
-    appadsSeatPanel.style.display = "none";
+    adslinePanel.style.display = "none";
+    appadslinePanel.style.display = "none";
 
     const [adsResult, appadsResult] = await Promise.all([
       fetchFile(domain, "ads.txt"),
@@ -642,18 +642,18 @@
       appadsContent.appendChild(msg);
     }
 
-    setupSeatPanel({
-      seatsBySSP: adsAnalysis.seatsBySSP, seatPanel: adsSeatPanel,
+    setuplinePanel({
+      linesBySSP: adsAnalysis.linesBySSP, linePanel: adslinePanel,
       sspDropdown: adsSspDropdown, verifyBtn: adsVerifyBtn, verifyAllBtn: adsVerifyAllBtn,
-      seatResults: adsSeatResults, verifyProgress: adsVerifyProgress,
+      lineResults: adslineResults, verifyProgress: adsVerifyProgress,
       progressBar: adsProgressBar, progressMsg: adsProgressMsg, progressCount: adsProgressCount,
       contentEl: adsContent
     });
 
-    setupSeatPanel({
-      seatsBySSP: appadsAnalysis.seatsBySSP, seatPanel: appadsSeatPanel,
+    setuplinePanel({
+      linesBySSP: appadsAnalysis.linesBySSP, linePanel: appadslinePanel,
       sspDropdown: appadsSspDropdown, verifyBtn: appadsVerifyBtn, verifyAllBtn: appadsVerifyAllBtn,
-      seatResults: appadsSeatResults, verifyProgress: appadsVerifyProgress,
+      lineResults: appadslineResults, verifyProgress: appadsVerifyProgress,
       progressBar: appadsProgressBar, progressMsg: appadsProgressMsg, progressCount: appadsProgressCount,
       contentEl: appadsContent
     });
