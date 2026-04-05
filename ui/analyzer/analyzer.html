@@ -43,12 +43,12 @@
       </div>
       <div id="ads-content" class="column-body"></div>
 
-      <!-- line verification for ads.txt -->
       <div class="line-panel" id="ads-line-panel" style="display:none;">
         <div class="line-panel-header">
           <select id="ads-ssp-dropdown"><option value="">Select SSP platform</option></select>
           <button class="line-verify-btn" id="ads-verify-btn" disabled>Verify</button>
           <button class="line-verify-all-btn" id="ads-verify-all-btn" disabled>All SSPs</button>
+          <button class="line-cancel-btn" id="ads-cancel-btn" style="display:none;">Cancel</button>
         </div>
         <div class="verify-progress" id="ads-verify-progress">
           <div class="progress-track"><div class="progress-bar-inner" id="ads-progress-bar"></div></div>
@@ -75,12 +75,12 @@
       </div>
       <div id="appads-content" class="column-body"></div>
 
-      <!-- line verification for app-ads.txt -->
       <div class="line-panel" id="appads-line-panel" style="display:none;">
         <div class="line-panel-header">
           <select id="appads-ssp-dropdown"><option value="">Select SSP platform</option></select>
           <button class="line-verify-btn" id="appads-verify-btn" disabled>Verify</button>
           <button class="line-verify-all-btn" id="appads-verify-all-btn" disabled>All SSPs</button>
+          <button class="line-cancel-btn" id="appads-cancel-btn" style="display:none;">Cancel</button>
         </div>
         <div class="verify-progress" id="appads-verify-progress">
           <div class="progress-track"><div class="progress-bar-inner" id="appads-progress-bar"></div></div>
@@ -96,6 +96,7 @@
 
   <div id="status-msg" class="status-msg">Enter a domain and click Analyze to begin.</div>
 
+  <script src="../../shared/utils.js"></script>
   <script src="analyzer.js"></script>
 </body>
 </html>

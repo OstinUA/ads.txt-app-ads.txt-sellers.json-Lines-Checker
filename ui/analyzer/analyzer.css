@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   analyzer.css — Enhanced ads.txt / app-ads.txt Analyzer (Light Theme)
-   Version 7.0.1
+   analyzer.css — Enhanced ads.txt / app-ads.txt Analyzer
+   Version 7.4.0
    ═══════════════════════════════════════════════════════════════════════════ */
 
 :root {
@@ -45,7 +45,6 @@ body {
   overflow: hidden;
 }
 
-/* ── Top bar ─────────────────────────────────────────────────────────────── */
 .top-bar {
   display: flex;
   gap: 10px;
@@ -66,6 +65,7 @@ body {
   outline: none;
   transition: border-color 0.15s;
 }
+
 .top-bar input::placeholder { color: rgba(255, 255, 255, 0.45); }
 .top-bar input:focus { border-color: var(--brand-color); background: rgba(255, 255, 255, 0.12); }
 
@@ -81,10 +81,10 @@ body {
   white-space: nowrap;
   transition: opacity 0.15s;
 }
+
 .top-bar button:hover { opacity: 0.88; }
 .top-bar button:disabled { opacity: 0.4; cursor: not-allowed; }
 
-/* ── Stats bar ───────────────────────────────────────────────────────────── */
 .stats-bar {
   display: flex;
   gap: 0;
@@ -125,13 +125,13 @@ body {
   border: 1px solid var(--border-light);
   font-family: "Consolas", "Courier New", monospace;
 }
+
 .stat-item.dupe { background: var(--yellow-bg); color: var(--yellow); border-color: var(--yellow-border); }
 .stat-item.error { background: var(--red-bg); color: var(--red); border-color: var(--red-border); }
 .stat-item.ratio-green { background: var(--green-bg); color: var(--green); border-color: var(--green-border); font-weight: 700; }
 .stat-item.ratio-red { background: var(--red-bg); color: var(--red); border-color: var(--red-border); font-weight: 700; }
 .stat-item.ratio-neutral { background: var(--surface2); color: var(--muted); border-color: var(--border-light); }
 
-/* ── Workspace ───────────────────────────────────────────────────────────── */
 .workspace {
   flex: 1;
   display: flex;
@@ -152,7 +152,6 @@ body {
   box-shadow: var(--shadow);
 }
 
-/* ── Column header ───────────────────────────────────────────────────────── */
 .column-header {
   padding: 9px 14px;
   background: var(--dark-header);
@@ -172,6 +171,7 @@ body {
   font-weight: 600;
   cursor: pointer;
 }
+
 .column-header a:hover { text-decoration: underline; }
 
 .redirect-badge {
@@ -185,7 +185,6 @@ body {
   border: 1px solid rgba(252, 211, 77, 0.3);
 }
 
-/* ── Search bar per column ───────────────────────────────────────────────── */
 .column-search {
   display: flex;
   align-items: center;
@@ -208,6 +207,7 @@ body {
   font-family: "Consolas", "Courier New", monospace;
   transition: border-color 0.15s, box-shadow 0.15s;
 }
+
 .column-search input::placeholder { color: var(--muted); font-family: "Segoe UI", system-ui, sans-serif; }
 .column-search input:focus { border-color: var(--brand-color); box-shadow: 0 0 0 2px var(--brand-glow); }
 
@@ -235,10 +235,10 @@ body {
   transition: all 0.12s;
   padding: 0;
 }
+
 .search-nav-btn:hover { border-color: var(--brand-color); color: var(--brand-color); background: var(--brand-glow); }
 .search-nav-btn:disabled { opacity: 0.3; cursor: not-allowed; }
 
-/* ── Column body (line content) ──────────────────────────────────────────── */
 .column-body {
   flex: 1;
   overflow-y: auto;
@@ -256,12 +256,11 @@ body {
 .column-body::-webkit-scrollbar-thumb { background: var(--scrollbar); border-radius: 4px; }
 .column-body::-webkit-scrollbar-thumb:hover { background: var(--brand-color); }
 
-/* ── line verification panel ─────────────────────────────────────────────── */
 .line-panel {
   flex-shrink: 0;
   border-top: 1px solid var(--border-color);
   background: var(--surface2);
-  max-height: 260px;
+  max-height: min(260px, 35vh);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -270,15 +269,17 @@ body {
 .line-panel-header {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
+  gap: 6px;
+  padding: 8px 10px;
   background: var(--surface);
   border-bottom: 1px solid var(--border-light);
   flex-shrink: 0;
+  flex-wrap: wrap;
 }
 
 .line-panel-header select {
-  flex: 1;
+  flex: 1 1 150px;
+  min-width: 120px;
   padding: 7px 10px;
   background: var(--surface);
   border: 1px solid var(--border-color);
@@ -293,37 +294,52 @@ body {
   background-position: right 10px center;
   padding-right: 28px;
 }
+
 .line-panel-header select:focus { border-color: var(--brand-color); box-shadow: 0 0 0 2px var(--brand-glow); }
 
-.line-verify-btn {
+.line-verify-btn, .line-verify-all-btn {
   font-size: 13px;
   font-weight: 600;
-  padding: 7px 18px;
+  padding: 7px 12px;
   border-radius: 6px;
+  transition: all 0.15s;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.line-verify-btn {
   border: 1px solid var(--brand-color);
   background: var(--brand-glow);
   color: var(--brand-color);
-  cursor: pointer;
-  white-space: nowrap;
-  transition: all 0.15s;
 }
+
 .line-verify-btn:hover:not(:disabled) { background: var(--brand-color); color: #fff; }
 .line-verify-btn:disabled { opacity: 0.35; cursor: not-allowed; }
 
 .line-verify-all-btn {
-  font-size: 13px;
-  font-weight: 600;
-  padding: 7px 18px;
-  border-radius: 6px;
   border: 1px solid var(--border-color);
   background: var(--surface);
   color: var(--text2);
-  cursor: pointer;
-  white-space: nowrap;
-  transition: all 0.15s;
 }
+
 .line-verify-all-btn:hover:not(:disabled) { border-color: var(--brand-color); color: var(--brand-color); background: var(--brand-glow); }
 .line-verify-all-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+.line-cancel-btn {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 7px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--red);
+  background: var(--red-bg);
+  color: var(--red);
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: all 0.15s;
+}
+
+.line-cancel-btn:hover { background: var(--red); color: #fff; }
 
 .line-results {
   flex: 1;
@@ -349,6 +365,7 @@ body {
   font-size: 13px;
   transition: background 0.15s;
 }
+
 .line-row:hover { background: var(--surface2); }
 
 .line-id {
@@ -362,6 +379,7 @@ body {
   text-overflow: ellipsis;
   max-width: 200px;
 }
+
 .line-id:hover { opacity: 0.7; }
 
 .line-type {
@@ -373,11 +391,13 @@ body {
   text-transform: uppercase;
   white-space: nowrap;
 }
+
 .line-type.direct {
   background: var(--green-bg);
   color: var(--green);
   border: 1px solid var(--green-border);
 }
+
 .line-type.reseller {
   background: var(--yellow-bg);
   color: var(--yellow);
@@ -390,6 +410,7 @@ body {
   white-space: nowrap;
   margin-left: auto;
 }
+
 .line-status.verified { color: var(--green); }
 .line-status.confidential { color: var(--yellow); }
 .line-status.not-verified { color: var(--red); }
@@ -398,6 +419,7 @@ body {
 .line-status.pending { color: var(--muted); }
 
 .ssp-group { margin-bottom: 6px; }
+
 .ssp-group-label {
   font-size: 10px;
   font-weight: 700;
@@ -408,19 +430,21 @@ body {
   padding: 0 2px;
 }
 
-/* ── Progress bar ────────────────────────────────────────────────────────── */
 .verify-progress {
   display: none;
   padding: 6px 12px;
   flex-shrink: 0;
 }
+
 .verify-progress.visible { display: block; }
+
 .progress-track {
   height: 3px;
   background: var(--border-light);
   border-radius: 2px;
   overflow: hidden;
 }
+
 .progress-bar-inner {
   height: 100%;
   width: 0%;
@@ -428,16 +452,17 @@ body {
   border-radius: 2px;
   transition: width 0.2s ease;
 }
+
 .progress-meta {
   display: flex;
   justify-content: space-between;
   margin-top: 4px;
   font-size: 11px;
 }
+
 .progress-msg { color: var(--purple); font-style: italic; }
 .progress-count { color: var(--muted); font-family: "Consolas", monospace; }
 
-/* ── Line highlight classes ──────────────────────────────────────────────── */
 .line { display: block; padding: 2px 5px; border-radius: 3px; }
 .line-error { background: var(--red-bg); color: var(--red); border-left: 3px solid var(--red); }
 .line-duplicate { background: var(--yellow-bg); color: #866a00; border-left: 3px solid var(--yellow); }
@@ -451,12 +476,14 @@ mark.search-highlight {
   border-radius: 2px;
   padding: 0 1px;
 }
+
 mark.search-highlight-current {
   background: var(--brand-color);
   color: #fff;
   border-radius: 2px;
   padding: 0 1px;
 }
+
 mark.line-highlight {
   background: rgba(232, 160, 7, 0.18);
   color: #986a00;
@@ -464,7 +491,6 @@ mark.line-highlight {
   padding: 0 1px;
 }
 
-/* ── Status message ──────────────────────────────────────────────────────── */
 .status-msg {
   padding: 40px;
   text-align: center;
