@@ -17,7 +17,6 @@
 
 ## Table of Contents
 
-- [ADWMG Logging and Validation Library](#adwmg-logging-and-validation-library)
 - [Table of Contents](#table-of-contents)
 - [Features](#features)
 - [Tech Stack & Architecture](#tech-stack--architecture)
@@ -362,8 +361,6 @@ Key settings are controlled in `manifest.json`:
 ## License
 
 This project is licensed under the GNU Affero General Public License v3.0 (`AGPL-3.0`). See [`LICENSE`](LICENSE) for full legal terms and obligations.
-
-## Contacts & Community Support
 
 ## Support the Project
 
