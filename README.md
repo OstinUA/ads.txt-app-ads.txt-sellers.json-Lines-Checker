@@ -1,67 +1,84 @@
-<a href="https://github.com/OstinUA" target="_blank" rel="noopener"><img src="https://raw.githubusercontent.com/OstinUA/Image-storage/main/readme/readme-SVG-ads.txt-app-ads.txt-sellers.json-Lines-Checker.png" valign="middle" alt="readme SVG ads.txt app ads.txt sellers.json Lines Checker"></a>
+# ADWMG Logging and Validation Library
 
-> A zero-dependency Chrome Extension (Manifest V3) for AdOps engineers to validate `ads.txt` and `app-ads.txt` inventories, cross-reference seller IDs against a `sellers.json` registry, and surface syntax errors or configuration mismatches in real-time — directly in the browser.
+A zero-dependency, Chrome Extension-compatible logging and diagnostics library for validating `ads.txt` and `app-ads.txt`, correlating results with `sellers.json`, and surfacing actionable AdOps telemetry in real time.
 
+[![Build Status](https://img.shields.io/github/actions/workflow/status/OstinUA/ads.txt-app-ads.txt-sellers.json-Lines-Checker/lint.yml?branch=main&style=for-the-badge)](https://github.com/OstinUA/ads.txt-app-ads.txt-sellers.json-Lines-Checker/actions/workflows/lint.yml)
 [![Version](https://img.shields.io/badge/version-7.4.1-21aeb3?style=for-the-badge)](manifest.json)
-[![Platform](https://img.shields.io/badge/platform-Chrome_Extension-4285F4?style=for-the-badge&logo=google-chrome&logoColor=white)](https://developer.chrome.com/docs/extensions/mv3/)
 [![Manifest](https://img.shields.io/badge/manifest-V3-2ea44f?style=for-the-badge)](manifest.json)
-[![Category](https://img.shields.io/badge/category-AdOps-orange?style=for-the-badge)](https://iabtechlab.com/ads-txt/)
+[![Coverage](https://img.shields.io/badge/coverage-manual%20%2B%20static-blueviolet?style=for-the-badge)](#testing)
 [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-blue?style=for-the-badge)](LICENSE)
-[![Repo Size](https://img.shields.io/github/repo-size/OstinUA/ads.txt-app-ads.txt-sellers.json-Lines-Checker?style=for-the-badge)](https://github.com/OstinUA/ads.txt-app-ads.txt-sellers.json-Lines-Checker)
 
 > [!NOTE]
-> The project is intentionally lightweight: no npm runtime dependency graph is required to run the extension.
+> While the repository is packaged as a Chrome Extension (MV3), its core value is a reusable logging and validation pipeline implemented in JavaScript utilities and background orchestration logic.
+
+> [!IMPORTANT]
+> The project does not require runtime npm dependencies to execute; loading the unpacked extension in Chrome is sufficient for functional validation.
 
 ## Table of Contents
 
-- [Title and Description](#adwmg-logging--validation-library)
+- [ADWMG Logging and Validation Library](#adwmg-logging-and-validation-library)
 - [Table of Contents](#table-of-contents)
 - [Features](#features)
 - [Tech Stack & Architecture](#tech-stack--architecture)
   - [Core Stack](#core-stack)
   - [Project Structure](#project-structure)
   - [Key Design Decisions](#key-design-decisions)
-  - [Logging and Validation Pipeline](#logging-and-validation-pipeline)
+  - [Architecture and Logging Pipeline](#architecture-and-logging-pipeline)
 - [Getting Started](#getting-started)
   - [Prerequisites](#prerequisites)
   - [Installation](#installation)
 - [Testing](#testing)
+  - [Unit Testing](#unit-testing)
+  - [Integration and Runtime Validation](#integration-and-runtime-validation)
+  - [Linting and Static Analysis](#linting-and-static-analysis)
 - [Deployment](#deployment)
+  - [Production Release Workflow](#production-release-workflow)
+  - [CI/CD Integration](#cicd-integration)
+  - [Containerization Guidance](#containerization-guidance)
 - [Usage](#usage)
+  - [Initialize the Validation Session](#initialize-the-validation-session)
+  - [Run Resilient Fetch and Record Diagnostics](#run-resilient-fetch-and-record-diagnostics)
+  - [Cross-reference Seller Records](#cross-reference-seller-records)
+  - [Trigger Cache Refresh on Demand](#trigger-cache-refresh-on-demand)
 - [Configuration](#configuration)
+  - [Storage-backed Configuration Keys](#storage-backed-configuration-keys)
+  - [Runtime Constants](#runtime-constants)
+  - [Environment Variables](#environment-variables)
+  - [Startup Flags](#startup-flags)
+  - [Manifest-driven Runtime Settings](#manifest-driven-runtime-settings)
 - [License](#license)
 - [Contacts & Community Support](#contacts--community-support)
 
 ## Features
 
-- High-signal validation pipeline for `ads.txt` and `app-ads.txt` records.
-- Seller identity cross-reference against `sellers.json` with cached refresh semantics.
-- Runtime diagnostics for malformed rows, mismatched domains, and missing seller IDs.
-- HTTP freshness inspection using metadata like `Last-Modified`.
-- Soft-404 and HTML-fallback detection for endpoints that return non-text payloads.
-- Domain extraction and normalization helpers (`getBrandName`, `cleanDomain`, `safeHref`).
-- Resilient network client with timeout + retry + backoff (`fetchWithTimeoutAndRetry`).
-- Tab-scoped badge telemetry to surface current match counts at-a-glance.
-- Overlay support for direct on-page inspection of `ads.txt`/`app-ads.txt` resources.
-- Analyzer workspace for duplicate discovery and DIRECT/RESELLER ratio exploration.
-- Isolated execution contexts separating background worker, content script, popup UI, and shared utilities.
-- Security-aware CI posture with linting, SAST (CodeQL), and OpenSSF Scorecard workflows.
+- High-fidelity parsing and validation for both `ads.txt` and `app-ads.txt` sources.
+- Real-time logging pipeline for syntax defects, malformed entries, and seller mismatch conditions.
+- Seller registry reconciliation against `sellers.json` with cache lifecycle management.
+- Retry-aware network fetch layer with timeout, bounded retry, and controlled backoff semantics.
+- Tab-scoped diagnostics and badge telemetry for quick operator-level visibility.
+- URL, domain, and brand normalization helpers for deterministic comparisons.
+- Detection of soft-404 responses and non-text/HTML fallback payloads.
+- Separation of concerns across background worker, popup runtime, analyzer UI, and content overlay script.
+- Support for user-defined `sellers.json` endpoint override via persistent extension storage.
+- Lightweight runtime model with zero mandatory third-party package dependencies.
+- Secure-by-default project governance through CI workflows for linting, SAST (CodeQL), and OpenSSF score checks.
+- Operationally focused design suitable for AdOps debugging workflows and pre-release inventory audits.
 
-> [!IMPORTANT]
-> The library logic is tuned for operational debugging in browser contexts; it is not a distributed crawler nor a replacement for backend compliance pipelines.
+> [!TIP]
+> Treat this project as a logging-first diagnostic toolkit: prioritize warning quality, contextual metadata, and reproducible operator output over broad crawler-style scraping behavior.
 
 ## Tech Stack & Architecture
 
 ### Core Stack
 
-| Layer | Technology | Purpose |
+| Layer | Technology | Responsibility |
 |---|---|---|
-| Primary Language | JavaScript (ES6+) | Core implementation for logging, validation, and utility primitives |
-| Runtime Platform | Chrome Extension Manifest V3 | Event-driven service worker lifecycle and browser API surface |
-| Browser APIs | `chrome.storage.local`, `chrome.scripting`, `chrome.action`, `chrome.tabs`, `chrome.runtime` | Caching, script injection, badge state, tab events, and inter-context messaging |
-| UI Layer | HTML5 + CSS3 + Vanilla JS | Popup and analyzer UI surfaces |
-| Security/Quality | GitHub Actions (`lint.yml`, `sast.yml`, `scorecard.yml`) | Static quality checks and security posture monitoring |
-| Data Sources | `ads.txt`, `app-ads.txt`, `sellers.json` | Validation inputs and seller registry mapping |
+| Language | JavaScript (ES6+) | Core library logic, validators, fetch primitives, and UI orchestration |
+| Runtime Host | Chrome Extension Manifest V3 | Event-driven execution model via service worker lifecycle |
+| Browser APIs | `chrome.runtime`, `chrome.tabs`, `chrome.action`, `chrome.scripting`, `chrome.storage.local` | Inter-context messaging, tab events, badge updates, script injection, and persistent cache |
+| UI | HTML5, CSS3, Vanilla JavaScript | Popup and analyzer diagnostic surfaces |
+| Security/Quality | GitHub Actions (`lint.yml`, `sast.yml`, `scorecard.yml`) | Continuous static validation, security analysis, and supply-chain posture |
+| Source Inputs | `ads.txt`, `app-ads.txt`, `sellers.json` | Canonical records used by validation and reconciliation pipeline |
 
 ### Project Structure
 
@@ -69,14 +86,15 @@
 ads.txt-app-ads.txt-sellers.json-Lines-Checker/
 ├── manifest.json
 ├── README.md
-├── CONTRIBUTING.md
 ├── LICENSE
+├── CONTRIBUTING.md
+├── SECURITY.md
 ├── background/
 │   └── background.js
-├── content/
-│   └── overlay.js
 ├── shared/
 │   └── utils.js
+├── content/
+│   └── overlay.js
 ├── ui/
 │   ├── popup/
 │   │   ├── popup.html
@@ -86,10 +104,6 @@ ads.txt-app-ads.txt-sellers.json-Lines-Checker/
 │       ├── analyzer.html
 │       ├── analyzer.css
 │       └── analyzer.js
-├── assets/
-│   └── icons/
-│       ├── icon128.png
-│       └── iconlogo.png
 ├── docs/
 │   └── extension-structure.md
 ├── scripts/
@@ -108,224 +122,245 @@ ads.txt-app-ads.txt-sellers.json-Lines-Checker/
 
 ### Key Design Decisions
 
-1. **MV3-first runtime model**: service worker logic is short-lived by design, so durable state is persisted in `chrome.storage.local`.
-2. **Context isolation**: background worker, content script, popup UI, and analyzer UI remain decoupled to avoid privilege leakage.
-3. **Shared utility contract**: domain parsing and network primitives are centralized in `shared/utils.js` to reduce duplicate logic.
-4. **Graceful degradation**: retries, timeouts, and fallback fetch paths reduce false negatives under transient network failures.
-5. **Tab-aware telemetry**: badge state is maintained per-tab, then updated on activation and navigation events.
-6. **Manual QA + CI static analysis**: a practical strategy for browser extension workflows where runtime integration tests are difficult to fully automate.
+1. **MV3-native lifecycle model**: transient background worker execution is aligned with persistent storage usage for durable cache and runtime state.
+2. **Shared utility consolidation**: reusable primitives in `shared/utils.js` prevent drift between UI and background validation behavior.
+3. **Context isolation for reliability and security**: background, popup, analyzer, and content scripts are decoupled and communicate through explicit messages.
+4. **Network resilience over optimistic assumptions**: timeout + retry controls harden diagnostics against unstable upstream endpoints.
+5. **Operator-first observability**: diagnostics are designed for AdOps workflows, with clear counters, warnings, and mismatch indicators.
+6. **Static quality gates in CI**: linting and security workflows provide guardrails where full browser integration tests are not always deterministic.
 
-> [!TIP]
-> Keep new logging or validation logic in `shared/utils.js` whenever it can be reused by both `background` and `ui` contexts.
+> [!WARNING]
+> This library is designed for interactive diagnostics and should not be considered a substitute for enterprise-scale backend crawling or compliance pipelines.
 
-### Logging and Validation Pipeline
+### Architecture and Logging Pipeline
 
 ```mermaid
 flowchart TD
-    A[Tab Activated or Updated] --> B[background.js schedules scan]
-    B --> C[ISOLATED script execution via chrome.scripting]
-    C --> D[Fetch ads.txt and app-ads.txt with timeout]
-    D --> E[Count brand-matching lines]
-    E --> F[Update badge state for current tab]
+    A[Tab Event: Activated or Updated] --> B[background.js receives trigger]
+    B --> C[Inject scan function in ISOLATED world]
+    C --> D[Fetch ads.txt and app-ads.txt]
+    D --> E[Apply timeout, retry, and response sanity checks]
+    E --> F[Parse lines and compute domain match counters]
+    F --> G[Persist/update tab-level badge telemetry]
 
-    G[Popup Opened] --> H[Load active tab metadata]
-    H --> I[Fetch remote files + extract Last-Modified]
-    H --> J[Request sellers cache from background worker]
-    J --> K{Cache stale?}
-    K -- Yes --> L[Refresh sellers.json and persist cache]
-    K -- No --> M[Use cached sellers data]
+    H[Popup or Analyzer Opened] --> I[Resolve active tab domain metadata]
+    I --> J[Request sellers cache from background service worker]
+    J --> K{Cache valid?}
+    K -- Yes --> L[Use cached sellers list]
+    K -- No --> M[Refresh sellers.json and persist timestamp]
     L --> N[Cross-reference seller IDs]
     M --> N
-    I --> N
-    N --> O[Render errors, warnings, counters, diagnostics]
+    N --> O[Generate diagnostics: errors, warnings, summary]
+    O --> P[Render results in popup/analyzer UI]
 ```
 
 ## Getting Started
 
 ### Prerequisites
 
-- `Google Chrome` or Chromium-based browser with Manifest V3 support.
-- `git` for cloning the repository.
-- `node` 20+ for optional local JS syntax/lint checks.
+- `Google Chrome` (or Chromium variant) with Manifest V3 support.
+- `git` for repository cloning and local version control operations.
+- `node` `>=20` for optional syntax checks and future lint tasks.
 
 > [!CAUTION]
-> This extension requests broad host permissions (`http://*/*`, `https://*/*`) to inspect arbitrary inventory endpoints. Review and constrain this for hardened environments.
+> The extension requests broad host access (`http://*/*`, `https://*/*`) to inspect remote inventory files. Restrict permissions in forked deployments when operating under strict compliance controls.
 
 ### Installation
 
 ```bash
-# 1) Clone repository
+# 1) Clone the repository
 git clone https://github.com/OstinUA/ads.txt-app-ads.txt-sellers.json-Lines-Checker.git
 
-# 2) Enter project directory
+# 2) Enter the project directory
 cd ads.txt-app-ads.txt-sellers.json-Lines-Checker
 
-# 3) Open Chrome extension manager
-# Navigate to: chrome://extensions
+# 3) Open the extensions page in Chrome
+# URL: chrome://extensions
 
 # 4) Enable Developer mode
 
-# 5) Click "Load unpacked"
-# Select the repository root containing `manifest.json`
+# 5) Click "Load unpacked" and select this repository root
+# The selected folder must contain manifest.json
 ```
+
+> [!TIP]
+> Pin the extension after loading it so diagnostics are accessible in one click during iterative AdOps investigations.
 
 ## Testing
 
-The project currently favors targeted manual validation plus static checks.
+This project primarily uses static checks plus targeted in-browser runtime validation.
 
-### Unit Tests
+### Unit Testing
 
 > [!NOTE]
-> There is no dedicated unit test harness committed in the repository at this time.
+> A dedicated unit-test harness is not currently committed. Existing quality checks are implemented via syntax validation and CI security/lint workflows.
 
-### Integration Tests (Manual)
+### Integration and Runtime Validation
 
-Run these checks in browser runtime:
+Perform the following checks against representative sites:
 
-- Verify successful parsing/rendering of both `ads.txt` and `app-ads.txt`.
-- Validate HTML soft-404 detection behavior for invalid text endpoints.
-- Validate seller reconciliation by testing known matching and non-matching `seller_id` values.
-- Verify `OWNERDOMAIN` / `MANAGERDOMAIN` consistency warnings.
-- Verify tab badge count behavior after navigation, reload, and tab switching.
+1. Open a domain with known-valid `ads.txt` and verify successful line parsing.
+2. Open a domain with intentional malformed rows to verify warning/error emission.
+3. Validate seller reconciliation for both existing and missing `seller_id` values.
+4. Verify cache reuse and refresh behavior for `sellers.json`.
+5. Confirm badge counter updates on tab switch, reload, and navigation transitions.
+6. Verify `OWNERDOMAIN` and `MANAGERDOMAIN` mismatch diagnostics.
 
-### Lint and Static Checks
+### Linting and Static Analysis
 
 ```bash
-# JavaScript syntax validation across extension source trees
+# JavaScript syntax checks across core source directories
 find background content shared ui -type f -name '*.js' -print0 | xargs -0 -I{} node --check "{}"
 
-# Optional npm-based lint if a script is added later
+# Optional npm lint entry point (runs only if configured)
 npm run lint --if-present
 ```
 
 ## Deployment
 
-### Production Build and Release
+### Production Release Workflow
 
-1. Update `version` in `manifest.json`.
-2. Reload extension in `chrome://extensions` and execute smoke tests.
-3. Package and upload through Chrome Web Store release flow.
-4. Document permission changes and behavioral impact in release notes.
+1. Increment `version` in `manifest.json` according to release policy.
+2. Reload the unpacked extension and execute smoke tests in `chrome://extensions`.
+3. Verify key diagnostic scenarios in popup and analyzer surfaces.
+4. Package and submit through the Chrome Web Store release process.
+5. Publish release notes documenting behavioral or permission changes.
 
-### CI/CD Integration Guidance
+### CI/CD Integration
 
-- `lint.yml`: JavaScript formatting/lint/static hygiene.
-- `sast.yml`: CodeQL-based static application security testing.
-- `scorecard.yml`: OpenSSF supply-chain score monitoring.
-- `dependabot-auto-merge.yml`: automated dependency update governance.
+Current GitHub Actions workflows provide foundational controls:
 
-> [!WARNING]
-> Any permission delta in `manifest.json` should be treated as a high-risk release event and gated with explicit reviewer sign-off.
+- `lint.yml`: syntax/style hygiene and quality checks.
+- `sast.yml`: CodeQL-backed static application security testing.
+- `scorecard.yml`: OpenSSF Scorecard monitoring for supply-chain posture.
+- `dependabot-auto-merge.yml`: controlled automation for dependency updates.
+- `label-sync.yml` and `ai-issue.yml`: repository maintenance automation.
 
-### Containerization
+> [!IMPORTANT]
+> Treat every `manifest.json` permission change as a high-risk release event requiring explicit reviewer sign-off and clear changelog communication.
 
-- Runtime containerization is not required for extension execution.
-- If desired for CI reproducibility, add a Docker image with `node` + lint toolchain and mount repo read-only where possible.
+### Containerization Guidance
+
+- Containerization is optional because runtime execution occurs inside Chrome.
+- If you need reproducible CI, create a lightweight Node-based image for static checks.
+- Prefer read-only mounts in CI jobs and keep release credentials in platform secret stores.
 
 ## Usage
 
-### Initialize and Execute Validation Flow
+### Initialize the Validation Session
 
 ```javascript
-// Example: high-level popup flow for diagnostics + rendering
+// Resolve active domain and start a diagnostics session.
 (async () => {
-  // Resolve active tab domain (already discovered by popup runtime)
   const activeDomain = "example.com";
 
-  // Fetch ads.txt with retry + timeout semantics
   const adsResponse = await fetchWithTimeoutAndRetry(
     `https://${activeDomain}/ads.txt`,
     { timeout: 10000, retries: 1 }
   );
+
   const adsText = await adsResponse.text();
+  const sellerCache = await chrome.runtime.sendMessage({ type: "getSellersCache" });
 
-  // Read cached sellers registry from background worker
-  const cache = await chrome.runtime.sendMessage({ type: "getSellersCache" });
-
-  // Render diagnostics into UI (project-specific renderer)
   renderResults({
     adsText,
-    sellers: cache.sellers,
-    fetchedAt: cache.ts
+    sellers: sellerCache?.sellers || [],
+    fetchedAt: sellerCache?.ts || Date.now()
   });
 })();
 ```
 
-### Use Shared Utilities
+### Run Resilient Fetch and Record Diagnostics
 
 ```javascript
-// Domain and URL normalization
-const brand = getBrandName("https://adwmg.com/sellers.json"); // -> "adwmg"
-const normalizedDomain = cleanDomain("https://www.Example.com/path?q=1"); // -> "example.com"
-const safeUrl = safeHref("example.com"); // -> "https://example.com/"
-
-// Fetch with timeout and retry for unstable upstream endpoints
-const res = await fetchWithTimeoutAndRetry("https://example.com/app-ads.txt", {
+// Retrieve app-ads.txt with retry guards for unstable upstreams.
+const response = await fetchWithTimeoutAndRetry("https://example.com/app-ads.txt", {
   timeout: 8000,
   retries: 2
 });
-const text = await res.text();
+
+const appAdsText = await response.text();
+logDiagnostics({
+  target: "app-ads.txt",
+  bytes: appAdsText.length,
+  fetchedAt: new Date().toISOString()
+});
 ```
 
-### Trigger Sellers Cache Refresh
+### Cross-reference Seller Records
 
 ```javascript
-// Force refresh of sellers cache from popup/analyzer context
-const result = await chrome.runtime.sendMessage({ type: "refreshSellers" });
+// Normalize data for deterministic seller matching.
+const brand = getBrandName("https://adwmg.com/sellers.json");
+const domain = cleanDomain("https://www.Example.com/path?query=1");
+const profileUrl = safeHref(domain);
 
-if (!result.ok) {
-  // handle refresh failure in UI state
-  showError("Unable to refresh sellers.json cache");
+const sellerMatch = sellers.find((entry) => entry.seller_id === "12345");
+if (!sellerMatch) {
+  addWarning(`Missing seller_id for ${brand} (${profileUrl})`);
+}
+```
+
+### Trigger Cache Refresh on Demand
+
+```javascript
+// Explicitly refresh sellers cache from popup or analyzer context.
+const refreshResult = await chrome.runtime.sendMessage({ type: "refreshSellers" });
+
+if (!refreshResult?.ok) {
+  showError("Unable to refresh sellers registry cache");
 }
 ```
 
 ## Configuration
 
-### Persistent Storage Keys (`chrome.storage.local`)
+### Storage-backed Configuration Keys
 
 | Key | Type | Description |
 |---|---|---|
-| `custom_sellers_url` | `string` | User-defined override for the sellers registry endpoint |
-| `adwmg_sellers_cache` | `array` | Cached value of `sellers.json.sellers` |
-| `adwmg_sellers_ts` | `number` | Cache write timestamp in epoch milliseconds |
+| `custom_sellers_url` | `string` | User-provided override for the default sellers registry endpoint |
+| `adwmg_sellers_cache` | `array` | Cached value derived from `sellers.json.sellers` |
+| `adwmg_sellers_ts` | `number` | Epoch timestamp (ms) of the last successful sellers cache write |
 
 ### Runtime Constants
 
 | Constant | Default | Purpose |
 |---|---|---|
-| `DEFAULT_SELLERS_URL` | `https://adwmg.com/sellers.json` | Baseline sellers registry source |
-| `SCAN_COOLDOWN_MS` | `60000` | Minimum time between scans per tab |
-| `FETCH_TIMEOUT_MS` | `10000` | Network timeout for background fetches |
-| `FETCH_RETRIES` | `3` | Retry attempts for resilient remote fetch |
-| `FIXED_CACHE_TTL_MS` | `3600000` | Sellers cache validity window |
-| `INITIAL_DELAY_MS` | `5000` | Delayed scan trigger after tab lifecycle events |
-| `RETRY_INTERVAL_MS` | `5000` | Interval for retrying scans with zero matches |
-| `MAX_RETRIES` | `3` | Maximum per-tab retry attempts |
+| `DEFAULT_SELLERS_URL` | `https://adwmg.com/sellers.json` | Primary registry URL used for seller reconciliation |
+| `SCAN_COOLDOWN_MS` | `60000` | Minimum interval between automatic tab scans |
+| `FETCH_TIMEOUT_MS` | `10000` | Request timeout for remote text assets |
+| `FETCH_RETRIES` | `3` | Retry attempts for fetch failures |
+| `FIXED_CACHE_TTL_MS` | `3600000` | Cache time-to-live for sellers data |
+| `INITIAL_DELAY_MS` | `5000` | Delay before first scan after tab lifecycle events |
+| `RETRY_INTERVAL_MS` | `5000` | Retry interval when initial scans return zero matches |
+| `MAX_RETRIES` | `3` | Maximum retry attempts for tab-level scan scheduling |
 
 ### Environment Variables
 
-No `.env` file is required for runtime operation.
+No `.env` file is required for baseline runtime behavior.
+
+If CI augmentation is introduced, store any secrets in GitHub Actions encrypted secrets (for example, release tokens), never in repository plaintext.
 
 ### Startup Flags
 
-No CLI startup flags are required.
+There are no CLI startup flags required to run this project as a Chrome extension.
 
-### Manifest Configuration
+### Manifest-driven Runtime Settings
 
-Primary runtime settings are declared in `manifest.json`:
+Key settings are controlled in `manifest.json`:
 
-- `permissions`: extension capabilities (`tabs`, `storage`, `scripting`, `unlimitedStorage`).
-- `host_permissions`: wildcard access for HTTP/HTTPS inventory retrieval.
-- `background.service_worker`: event-driven worker entrypoint.
-- `action.default_popup`: popup UI bootstrapping file.
-- `content_scripts`: overlay injection rules for `ads.txt` and `app-ads.txt` URL patterns.
+- `permissions`: extension capability scope such as `tabs`, `storage`, `scripting`, and `unlimitedStorage`.
+- `host_permissions`: target URL access policy for fetching `ads.txt`, `app-ads.txt`, and `sellers.json`.
+- `background.service_worker`: event-driven entrypoint for orchestration and cache handling.
+- `action.default_popup`: popup UI bootstrap document.
+- `content_scripts`: overlay injection behavior for matching URL patterns.
 
-> [!IMPORTANT]
-> Never commit sensitive values into source files. If release automation credentials are added later, keep them in GitHub Actions encrypted secrets only.
+> [!WARNING]
+> Avoid introducing unnecessary permission surface area in `manifest.json`; request only the minimum privileges required for the intended validation behavior.
 
 ## License
 
-This project is licensed under the GNU Affero General Public License v3.0 (`AGPL-3.0`). See [`LICENSE`](LICENSE) for full terms.
+This project is licensed under the GNU Affero General Public License v3.0 (`AGPL-3.0`). See [`LICENSE`](LICENSE) for full legal terms and obligations.
 
 ## Contacts & Community Support
 
