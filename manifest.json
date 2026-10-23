@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Lines Checker: ads.txt/app-ads.txt/sellers.json",
-  "version": "7.6.1",
+  "version": "7.6.2",
   "description": "Check ads.txt and app-ads.txt, find errors and duplicates, and verify seller IDs against sellers.json directly in Chrome",
   "icons": {
     "128": "assets/icons/icon128.png"
